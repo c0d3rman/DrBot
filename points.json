@@ -1,7 +1,8 @@
 [
     {
         "id": "Some removal reason title",
-        "points": 3
+        "points": 3,
+        "expires": 2
     },
     {
         "id": "Another one",
