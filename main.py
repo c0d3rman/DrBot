@@ -68,7 +68,6 @@ def main():
         point_store.add(modaction)
 
 
-        point_store.add(author, submission_fullname, point_cost)
 
 
 if __name__ == "__main__":
