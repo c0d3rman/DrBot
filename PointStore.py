@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
@@ -16,7 +17,6 @@ class PointStore:
         self.reddit = reddit
         self.point_map = point_map
         self.megadict = {}
-        pass
 
     def add(self, mod_action):
         """
@@ -95,7 +95,7 @@ class PointStore:
                     del self.megadict[username][fullname]
                     change = True
                     continue
-        
+
         # If the user's record is empty now, delete
         if len(self.megadict[username]) == 0:
             self.logger.debug(f"User u/{username} has an empty record now; removing")
@@ -107,8 +107,15 @@ class PointStore:
     def scan_all(self):
         """
         Scan the entire data store for expired or re-approved submissions.
+        Also cleans up mod entries if EXCLUDE_MODS is on; this is done here so we can make a single request to get a list of mods instead of slowing down other operations with constant requests.
         """
-        for username in list(self.megadict.keys()): # Cloned key list to avoid issues with modifying dict during iteration
+        if os.getenv("DRBOT_EXCLUDE_MODS") == "1":
+            for moderator in self.reddit.subreddit(os.getenv("DRBOT_SUB")).moderator():
+                if moderator.name in self.megadict:
+                    self.logger.info(f"Wiping record of u/{moderator.name} because they're a mod.")
+                    del self.megadict[moderator.name]
+
+        for username in list(self.megadict.keys()):  # Cloned key list to avoid issues with modifying dict during iteration
             self.scan(username)
 
     def ban(self, username, total):
@@ -116,12 +123,52 @@ class PointStore:
         Act on a user hitting the threshold.
         Either bans them or just sends modmail.
         Double-checks that all submissions are still removed and not past their expirations.
-        Returns true if the ban went through and false if it didn't.
+        Returns true if the ban/modmail went through and false if it didn't.
         """
+
+        # Exclude mods if requested
+        if os.getenv("DRBOT_EXCLUDE_MODS") == "1" and util.is_mod(self.reddit, username):
+            self.logger.info(f"Not banning u/{username} because they're a mod (and wiping record).")
+            del self.megadict[username]
+            return False
 
         # Double check
         self.scan(username)
-        if self.get_total(username) <= os.getenv("DRBOT_POINT_THRESHOLD"):
+        if self.get_total(username) < int(os.getenv("DRBOT_POINT_THRESHOLD")):
             return False
 
         self.logger.info(f"Banning u/{username} for reaching {total} points.")
+
+        # Handle autoban
+        didBan = False
+        if os.getenv("DRBOT_AUTOBAN_MODE") == "1":
+            pass  # TBD
+            didBan = True
+
+        # Prepare modmail message
+        message = f"u/{username}'s violations have passed the {os.getenv('DRBOT_POINT_THRESHOLD')} point threshold:\n\n"
+        for fullname in self.megadict[username]:
+            if fullname.startswith("t1_"):
+                submission = self.reddit.comment(fullname[3:])
+                kind = "comment"
+                text = submission.body
+            else:
+                submission = self.reddit.submission(fullname[3:])
+                kind = "post"
+                text = submission.title
+            text = re.sub(r"\s*\n\s*", " ", text)  # Strip newlines
+            maxlen = os.getenv("DRBOT_MODMAIL_TRUNCATE_LEN")
+            if maxlen != "" and len(text) > int(maxlen):
+                text = text[:int(maxlen) - 3] + "..."
+            date = datetime.fromtimestamp(submission.banned_at_utc).strftime("%m/%d/%y")
+            points = self.megadict[username][fullname]['cost']
+            message += f"- {date} {kind} ({points} point{'s' if points > 1 else ''}): [{text}]({submission.permalink}) ({submission.mod_reason_title})\n"
+        message += f"\n\n(This is an automated message, {'a' if didBan else 'no'} ban has been issued.)"
+
+        # Send modmail
+        self.reddit.subreddit(os.getenv("DRBOT_SUB")).modmail.create(
+            subject=f"DRBOT: {'ban' if didBan else 'point'} alert for u/{username}",
+            body=message,
+            recipient=None)  # None makes it create a moderator discussion
+
+        return True

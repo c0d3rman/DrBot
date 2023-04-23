@@ -54,16 +54,15 @@ class PointMap:
 
     def get_expiration(self, removal_reason):
         """Get the expiration months for a removal reason (or the default if no special duration is specified)."""
+
+        default_expiration = os.getenv("DRBOT_EXPIRATION_MONTHS")
+        default_expiration = None if default_expiration == "" or int(default_expiration) == 0 else int(default_expiration)
         
         # Use default if this removal reason is unknown
         if not removal_reason in self.point_map:
-            self.logger.debug(f"Unknown removal reason '{removal_reason}', using default expiration.")
-            if os.getenv("DRBOT_EXPIRATION_MONTHS") == "":
-                return None
-            return int(os.getenv("DRBOT_EXPIRATION_MONTHS"))
+            self.logger.debug(f"Unknown removal reason '{removal_reason}', using default expiration ({default_expiration}).")
+            return default_expiration
         
         # Otherwise, use the specific duration if available or the default if not
-        expiration = self.point_map[removal_reason].get("expires", int(os.getenv("DRBOT_EXPIRATION_MONTHS")))
-        if expiration == 0:
-            expiration = None  # 0 means don't expire
-        return expiration
+        expiration = self.point_map[removal_reason].get("expires", default_expiration)
+        return None if expiration == 0 else expiration

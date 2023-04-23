@@ -76,3 +76,6 @@ def get_dupes(L):
     for item in L:
         seen2.add(item) if item in seen else seen.add(item)
     return seen2
+
+def is_mod(reddit, username):
+    return len(reddit.subreddit(os.getenv("DRBOT_SUB")).moderator(username)) > 0

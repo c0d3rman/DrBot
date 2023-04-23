@@ -37,7 +37,7 @@ def setup_reddit():
     """
     Setup reddit access.
     """
-    logger.info("Logging in to Reddit (u/%s)...", os.getenv('DRBOT_USERNAME'))
+    logger.info(f"Logging in to Reddit (u/{os.getenv('DRBOT_USERNAME')})...")
     reddit = praw.Reddit(client_id=os.getenv('DRBOT_CLIENT_ID'),
                          client_secret=os.getenv('DRBOT_CLIENT_SECRET'),
                          username=os.getenv('DRBOT_USERNAME'),
@@ -74,5 +74,5 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        logger.info("Shutting down...")
+        logger.info("Bot manually interrupted - shutting down...")
     logging.shutdown()
