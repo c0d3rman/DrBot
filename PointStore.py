@@ -167,10 +167,10 @@ class PointStore:
                 message += f"- {date} {kind} ({points} point{'s' if points > 1 else ''}): [{text}]({submission.permalink}) ({submission.mod_reason_title})\n"
             message += f"\n\n(This is an automated message, {'a' if didBan else 'no'} ban has been issued.)"
 
-            Send modmail
             self.reddit.subreddit(settings.subreddit).modmail.create(
                 subject=f"DRBOT: {'ban' if didBan else 'point'} alert for u/{username}",
                 body=message,
                 recipient=None)  # None makes it create a moderator discussion
+            # Send modmail
 
         return True
