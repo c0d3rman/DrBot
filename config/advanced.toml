@@ -1,0 +1,21 @@
+# Advanced settings to configure the minutiae of DRBOT.
+# You don't need to change these unless you want something specific.
+
+# Log file name.
+log_file = "log.log"
+
+# Log level (one of CRITICAL, ERROR, WARNING, INFO, DEBUG) to print to the console / save to the file.
+console_log_level = "INFO"
+file_log_level = "DEBUG"
+
+# DRBOT stores its data on an automatically-managed wiki page on your sub.
+# You can change the name of the page here, or leave it blank if you want everything to be local (not recommended).
+wiki_page = "drbot_data"
+
+# When modmailing you, truncate long comments to this many characters (or set to 0 to disable truncation).
+modmail_truncate_len = 100
+
+# By default, the bot will not try to ban mods or keep track of their points.
+# You can force it to include mods by setting this to false.
+# Note that this may cause permissions issues with your sub - mods can't always ban other mods.
+exclude_mods = true

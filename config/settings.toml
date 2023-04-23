@@ -1,0 +1,45 @@
+# Fill in these settings to make DRBOT work for your sub.
+
+# ===========
+# Basics
+# ===========
+
+# The sub to moderate (without r/).
+subreddit = ""
+
+# Auth credentials.
+# You need the username and password of an account with mod permissions.
+# It's strongly recommended to create a new account for the bot instead of using a real human's account.
+username = "" # Don't include u/
+password = ""
+
+# The bot also needs to be registered with reddit.
+# You can create a client_id and client_secret at https://www.reddit.com/prefs/apps/
+client_id = ""
+client_secret = ""
+
+
+# ===========
+# Points
+# ===========
+
+# When a user has this many points, the bot will take action.
+point_threshold = 12
+
+# Number of months before a removal is forgiven and wiped from the record.
+# Set to 0 to never expire.
+expiration_months = 6
+
+# What should the bot do when a user passes the point threshold?
+# 1: notify the mods
+# 2: autoban and notify the mods
+# 3: autoban silently
+autoban_mode = 1
+
+# How much points does each removal cost?
+# The ID of a removal reason must be its exact title.
+# You can optionally set a different expiration time (in months) for each removal reason by adding an "expires" field. (If you don't it will use the default from above.)
+point_config = [
+    {id="Some removal reason title", points=3, expires=2},
+    {id="Another one", points=0}
+]

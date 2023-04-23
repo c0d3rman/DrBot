@@ -1,6 +1,8 @@
 import os
 import logging
 
+from config import settings
+
 
 class LogFormatter(logging.Formatter):
     """
@@ -43,27 +45,19 @@ def getLogger():
     # Logging to console
     console_handler = logging.StreamHandler()
     console_handler.setFormatter(LogFormatter(fmt=BASE_FORMAT))
-    valid_log_level = True
-    try:
-        console_handler.setLevel(os.getenv("DRBOT_LOGLEVEL").upper())
-    except ValueError:
-        valid_log_level = False
+    console_handler.setLevel(settings.console_log_level)
     logger.addHandler(console_handler)
 
     # Logging to file
     try:
-        logfile_handler = logging.FileHandler(os.getenv("DRBOT_LOGFILE"))
+        logfile_handler = logging.FileHandler(settings.log_file)
     except Exception as e:
-        logger.critical("Couldn't open the log file. Did you set it in .env?")
+        logger.critical(f"Couldn't open the log file: {settings.log_file}")
         logger.critical(e)
         raise e
     logfile_handler.setFormatter(logging.Formatter(fmt=BASE_FORMAT))
+    logfile_handler.setLevel(settings.file_log_level)
     logger.addHandler(logfile_handler)
-
-    # Now that logging's done setting up, complain about an invalid log level
-    if not valid_log_level:
-        logger.warning(f"Invalid log level set in DRBOT_LOGLEVEL: '{os.getenv('DRBOT_LOGLEVEL')}'. Must be one of CRITICAL, ERROR, WARNING, INFO, DEBUG. Defaulting to INFO.")
-        console_handler.setLevel(logging.INFO)
 
     return logger
 
@@ -78,4 +72,4 @@ def get_dupes(L):
     return seen2
 
 def is_mod(reddit, username):
-    return len(reddit.subreddit(os.getenv("DRBOT_SUB")).moderator(username)) > 0
+    return len(reddit.subreddit(settings.subreddit).moderator(username)) > 0
