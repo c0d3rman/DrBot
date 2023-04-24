@@ -22,7 +22,6 @@ try:
 except:
     sys.exit(1)
 
-last_update_utc = 0
 
 
 
@@ -50,7 +49,7 @@ def main():
     for modaction in subreddit.mod.stream.log(skip_existing=True):
     subreddit = reddit.subreddit(settings.subreddit)
         # Ignore any modlog entries that have already been processed
-        if modaction.created_utc <= last_update_utc:
+        if modaction.created_utc <= data_store.get_last_updated():
             continue
 
         # If a removal reason is added, add the violation to the user's record

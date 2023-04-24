@@ -161,12 +161,16 @@ class PointStore:
         self.scan(username)
         if self.data_store.get_user_total(username) < settings.point_threshold:
             return False
+        
+        # Don't act if if already banned
+        if next(self.reddit.subreddit(settings.subreddit).banned(username), None) is not None:
+            self.logger.info(f"u/{username} is already banned; skipping action.")
+            return False
 
         # Handle autoban
         if settings.autoban_mode in [2, 3]:
             self.logger.info(f"Banning u/{username} for reaching {total} points.")
 
-            print(self.reddit.subreddit(settings.subreddit).banned(username))
             pass  # TBD
 
         # Handle modmail notification
