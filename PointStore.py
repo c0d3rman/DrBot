@@ -47,9 +47,14 @@ class PointStore:
         if violation_fullname in self.data_store.get_user(username):
             self.logger.debug(f"{violation_fullname} already accounted for; skipping.")
             return False
-        
+
         # Safe mode checks
         if settings.safe_mode:
+            # Check if the user's account was deleted/suspended
+            if not util.user_exists(self.reddit, username):
+                self.logger.info(f"u/{username}'s account doesn't exist anymore; skipping.")
+                return False
+
             # If exclude_mods is on, check if the user is a mod
             if settings.exclude_mods and len(self.reddit.subreddit(settings.subreddit).moderator(username)) > 0:
                 self.logger.debug(f"u/{username} is a mod; skipping.")
@@ -74,7 +79,7 @@ class PointStore:
             self.logger.error(f"Failed to add violation {violation_fullname} to u/{username} (DataStore issue).")
             return False
 
-        self.data_store.set_last_updated(removal_time)
+        self.data_store.set_last_updated(removal_time, mod_action.id)
         new_total = self.data_store.get_user_total(username)
         self.logger.info(f"+{point_cost} to u/{username} from {violation_fullname}, now at {new_total}.")
 
@@ -99,13 +104,13 @@ class PointStore:
             return self.data_store.remove_user("[deleted]")
         # If the user doesn't exist anymore (most often because they deleted their account), dump eet
         if not util.user_exists(self.reddit, username):
-            self.logger.info(f"u/{username} doesn't exist anymore (probably because their account was deleted) - expunging.")
+            self.logger.info(f"u/{username}'s account doesn't exist anymore - expunging.")
             return self.data_store.remove_user(username)
         # Exclude mods if requested
         if check_mod and settings.exclude_mods and len(self.reddit.subreddit(settings.subreddit).moderator(username)) > 0:
             self.logger.info(f"u/{username} is a mod - expunging.")
             return self.data_store.remove_user(username)
-        
+
         userdict = self.data_store.get_user(username)
         for violation_fullname in userdict:
             # Check for re-approval
@@ -161,7 +166,7 @@ class PointStore:
         self.scan(username)
         if self.data_store.get_user_total(username) < settings.point_threshold:
             return False
-        
+
         # Don't act if if already banned
         if next(self.reddit.subreddit(settings.subreddit).banned(username), None) is not None:
             self.logger.info(f"u/{username} is already banned; skipping action.")

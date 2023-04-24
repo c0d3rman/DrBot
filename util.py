@@ -76,6 +76,8 @@ def user_exists(reddit, username):
     try:
         reddit.redditor(username).fullname
     except prawcore.exceptions.NotFound:
-        return False
+        return False # Account deleted
+    except AttributeError:
+        return False # Account suspended
     else:
         return True

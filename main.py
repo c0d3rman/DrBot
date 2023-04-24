@@ -47,20 +47,20 @@ def main():
     
 
     # Continually iterate through modlog entries
-    for modaction in subreddit.mod.stream.log(skip_existing=True):
     subreddit = reddit.subreddit(settings.subreddit)
+    for mod_action in subreddit.mod.stream.log(skip_existing=True):
         # Ignore any modlog entries that have already been processed
-        if datetime.fromtimestamp(modaction.created_utc) <= data_store.get_last_updated():
+        if not data_store.is_after_last_updated(int(mod_action.created_utc), mod_action.id):
             continue
 
         # If a removal reason is added, add the violation to the user's record
-        if modaction.action == "addremovalreason":
-            point_store.add(modaction)
+        if mod_action.action == "addremovalreason":
+            point_store.add(mod_action)
         # If a comment has been re-approved, remove it from the record
-        elif modaction.action == "approvecomment":
-            userdict = data_store.get_user(modaction.target_author)
-            if modaction.target_fullname in userdict and data_store.remove(modaction.target_author, modaction.target_fullname):
-                logger.info(f"-{userdict[modaction.target_fullname]['cost']} to u/{modaction.target_author} from {modaction.target_fullname} (re-approved), now at {data_store.get_user_total(modaction.target_author)}.")
+        elif mod_action.action == "approvecomment":
+            userdict = data_store.get_user(mod_action.target_author)
+            if mod_action.target_fullname in userdict and data_store.remove(mod_action.target_author, mod_action.target_fullname):
+                logger.info(f"-{userdict[mod_action.target_fullname]['cost']} to u/{mod_action.target_author} from {mod_action.target_fullname} (re-approved), now at {data_store.get_user_total(mod_action.target_author)}.")
 
 
 
