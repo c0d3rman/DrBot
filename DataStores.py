@@ -11,7 +11,7 @@ class DataStore(metaclass=abc.ABCMeta):
 
     @classmethod
     def __subclasshook__(cls, subclass):
-        abstract_methods = ["add", "remove", "get_user", "get_user_total", "remove_user", "all_users"]
+        abstract_methods = ["add", "remove", "get_user", "get_user_total", "remove_user", "all_users", "get_last_updated", "_set_last_updated"]
         return all(hasattr(subclass, x) and callable(getattr(subclass, x)) for x in abstract_methods) or NotImplemented
 
     @abc.abstractmethod
@@ -43,12 +43,33 @@ class DataStore(metaclass=abc.ABCMeta):
         """Get a list of all users who have violations."""
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def get_last_updated(self) -> datetime:
+        """Get the time of the latest entry with which the data store was updated."""
+        raise NotImplementedError
+
+    def set_last_updated(self, d) -> bool:
+        """Set the time of the latest entry with which the data store was updated.
+        Will refuse to decrement the time - it can only increase.
+        Returns True if the time was updated and False if it wasn't."""
+        return self._set_last_updated(d) if d > self.get_last_updated() else False
+    
+    @abc.abstractmethod
+    def _set_last_updated(self, d) -> bool:
+        """Set the time of the latest entry with which the data store was updated.
+        Implement this without safety checking for decrementing the time; the parent class method takes care of it.
+        Returns True if the time was updated and False if it wasn't."""
+        raise NotImplementedError
+
 
 class LocalDataStore(DataStore):
     """Stores all data locally in a dict."""
 
     def __init__(self, logger: Logger):
         self.megadict = {}
+        self.meta = {
+            "last_updated": 0
+        }
         super().__init__(logger)
 
     def add(self, username: str, violation_fullname: str, point_cost: int, expires: Optional[datetime] = None) -> bool:
@@ -89,13 +110,22 @@ class LocalDataStore(DataStore):
 
     def all_users(self) -> list[str]:
         return list(self.megadict.keys())
+    
+    def get_last_updated(self) -> datetime:
+        return datetime.fromtimestamp(self.meta["last_updated"])
+    
+    def _set_last_updated(self, d) -> bool:
+        self.meta["last_updated"] = int(datetime.timestamp(d))
+        return True
 
     def save_json(self, path: str) -> None:
         with open(path, "w") as f:
-            json.dump(self.megadict, f)
+            json.dump({"meta": self.meta, "megadict": self.megadict}, f)
         self.logger.debug(f"Saved LocalDataStore to JSON..")
 
     def load_json(self, path: str) -> None:
         with open(path, "r") as f:
-            self.megadict = json.load(f)
+            raw = json.load(f)
+            self.meta = raw["meta"]
+            self.megadict = raw["megadict"]
         self.logger.debug(f"Loaded LocalDataStore from JSON.")

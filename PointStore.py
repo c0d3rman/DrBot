@@ -28,7 +28,7 @@ class PointStore:
         removal_reason_id = mod_action.description
         violation_fullname = mod_action.target_fullname
         username = mod_action.target_author
-        removal_time = mod_action.created_utc
+        removal_time = datetime.fromtimestamp(mod_action.created_utc)
 
         self.logger.debug(f"Processing removal of {violation_fullname} with reason: {removal_reason_id}")
 
@@ -63,7 +63,7 @@ class PointStore:
         # Calculate expiration
         expiration_duration = self.point_map.get_expiration(removal_reason_id)
         if not expiration_duration is None:
-            expiration = datetime.fromtimestamp(removal_time) + relativedelta(months=self.point_map.get_expiration(removal_reason_id))
+            expiration = removal_time + relativedelta(months=self.point_map.get_expiration(removal_reason_id))
             # Check if this submission has already expired (should almost never happen)
             if datetime.now() >= expiration:
                 self.logger.debug(f"{violation_fullname} already expired before it was added; skipping.")
@@ -74,6 +74,7 @@ class PointStore:
             self.logger.error(f"Failed to add violation {violation_fullname} to u/{username} (DataStore issue).")
             return False
 
+        self.data_store.set_last_updated(removal_time)
         new_total = self.data_store.get_user_total(username)
         self.logger.info(f"+{point_cost} to u/{username} from {violation_fullname}, now at {new_total}.")
 
