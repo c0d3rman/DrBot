@@ -8,7 +8,6 @@ Free to use by anyone for any reason (licensed under CC0)
 import sys
 import praw
 import logging
-from datetime import datetime
 
 from config import settings
 import util

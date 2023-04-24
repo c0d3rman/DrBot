@@ -7,6 +7,10 @@ DRBOT (Do Really Boring Overhead Tasks) is a reddit bot that automatically monit
 
 TBD
 
+## Caveats
+
+Re-approving and then re-deleting a comment deletes the removal reason on reddit's side, so if you do this, be aware that DRBOT will treat the removal as having no reason as well.
+
 &nbsp;
 
 <p xmlns:dct="http://purl.org/dc/terms/" xmlns:vcard="http://www.w3.org/2001/vcard-rdf/3.0#">

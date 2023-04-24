@@ -1,3 +1,4 @@
+from __future__ import annotations
 import abc
 from typing import Any, Optional
 from logging import Logger
@@ -135,14 +136,16 @@ class LocalDataStore(DataStore):
             self.meta["last_updated"]["ids"].append(id)
             return True
 
-    def save_json(self, path: str) -> None:
+    def to_json(self, path: str) -> None:
         with open(path, "w") as f:
             json.dump({"meta": self.meta, "megadict": self.megadict}, f)
         self.logger.debug(f"Saved LocalDataStore to JSON..")
 
-    def load_json(self, path: str) -> None:
+    @classmethod
+    def from_json(cls, logger: Logger, path: str) -> LocalDataStore:
+        x = cls(logger)        
         with open(path, "r") as f:
             raw = json.load(f)
-            self.meta = raw["meta"]
-            self.megadict = raw["megadict"]
-        self.logger.debug(f"Loaded LocalDataStore from JSON.")
+            x.meta = raw["meta"]
+            x.megadict = raw["megadict"]
+        logger.debug(f"Loaded LocalDataStore from {path}")
