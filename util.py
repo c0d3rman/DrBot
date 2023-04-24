@@ -1,7 +1,5 @@
-import logging
 import prawcore
-
-from config import settings
+import logging
 
 
 class LogFormatter(logging.Formatter):
@@ -33,35 +31,6 @@ class LogFormatter(logging.Formatter):
         return super(LogFormatter, self).format(record, *args, **kwargs)
 
 
-def getLogger():
-    """
-    Setup logger.
-    """
-    BASE_FORMAT = "[%(asctime)s] [%(filename)s/%(funcName)s:%(lineno)d] %(levelname)s | %(message)s"
-
-    logger = logging.getLogger("DRBOT")
-    logger.setLevel(logging.DEBUG)
-
-    # Logging to console
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(LogFormatter(fmt=BASE_FORMAT))
-    console_handler.setLevel(settings.console_log_level)
-    logger.addHandler(console_handler)
-
-    # Logging to file
-    try:
-        logfile_handler = logging.FileHandler(settings.log_file)
-    except Exception as e:
-        logger.critical(f"Couldn't open the log file: {settings.log_file}")
-        logger.critical(e)
-        raise e
-    logfile_handler.setFormatter(logging.Formatter(fmt=BASE_FORMAT))
-    logfile_handler.setLevel(settings.file_log_level)
-    logger.addHandler(logfile_handler)
-
-    return logger
-
-
 def get_dupes(L):
     """
     Given a list, get a set of all elements which appear more than once.
@@ -71,13 +40,14 @@ def get_dupes(L):
         seen2.add(item) if item in seen else seen.add(item)
     return seen2
 
+
 def user_exists(reddit, username):
     """Check if a user exists on reddit."""
     try:
         reddit.redditor(username).fullname
     except prawcore.exceptions.NotFound:
-        return False # Account deleted
+        return False  # Account deleted
     except AttributeError:
-        return False # Account suspended
+        return False  # Account suspended
     else:
         return True

@@ -1,15 +1,12 @@
 from __future__ import annotations
 import abc
 from typing import Any, Optional
-from logging import Logger
 from datetime import datetime
 import json
+from log import log
 
 
 class DataStore(metaclass=abc.ABCMeta):
-    def __init__(self, logger: Logger):
-        self.logger = logger
-
     @classmethod
     def __subclasshook__(cls, subclass):
         abstract_methods = ["add", "remove", "get_user", "remove_user", "all_users", "_is_after_last_updated", "_set_last_updated"]
@@ -49,7 +46,7 @@ class DataStore(metaclass=abc.ABCMeta):
         if type(time) is datetime:
             time = int(datetime.timestamp(time))
         return self._is_after_last_updated(time, id)
-    
+
     @abc.abstractmethod
     def _is_after_last_updated(self, time: int, id: str) -> bool:
         """Check if a given time and id has been processed already (i.e. is not after the last updated)."""
@@ -74,34 +71,34 @@ class DataStore(metaclass=abc.ABCMeta):
 class LocalDataStore(DataStore):
     """Stores all data locally in a dict."""
 
-    def __init__(self, logger: Logger):
+    def __init__(self):
         self.megadict = {}
         self.meta = {
             "last_updated": {"time": 0, "ids": []}
         }
-        super().__init__(logger)
+        super().__init__()
 
     def add(self, username: str, violation_fullname: str, point_cost: int, expires: Optional[datetime] = None) -> bool:
         if not username in self.megadict:
             self.megadict[username] = {}
         elif violation_fullname in self.megadict[username]:
-            self.logger.debug(f"Can't add {violation_fullname} to u/{username} (already exists).")
+            log.debug(f"Can't add {violation_fullname} to u/{username} (already exists).")
             return False
         self.megadict[username][violation_fullname] = {"cost": point_cost}
         if not expires is None:
             self.megadict[username][violation_fullname]["expires"] = int(datetime.timestamp(expires))
-        self.logger.debug(f"Added {violation_fullname} to u/{username}.")
+        log.debug(f"Added {violation_fullname} to u/{username}.")
         return True
 
     def remove(self, username: str, violation_fullname: str) -> bool:
         if not username in self.megadict:
-            self.logger.debug(f"Can't remove {violation_fullname} from u/{username} (user doesn't exist).")
+            log.debug(f"Can't remove {violation_fullname} from u/{username} (user doesn't exist).")
             return False
         if not violation_fullname in self.megadict[username]:
-            self.logger.debug(f"Can't remove {violation_fullname} from u/{username} (violation doesn't exist).")
+            log.debug(f"Can't remove {violation_fullname} from u/{username} (violation doesn't exist).")
             return False
         del self.megadict[username][violation_fullname]
-        self.logger.debug(f"Removed {violation_fullname} from u/{username}.")
+        log.debug(f"Removed {violation_fullname} from u/{username}.")
         if len(self.megadict[username]) == 0:
             del self.megadict[username]
         return True
@@ -111,9 +108,9 @@ class LocalDataStore(DataStore):
 
     def remove_user(self, username: str) -> bool:
         if not username in self.megadict:
-            self.logger.debug(f"Can't remove u/{username} (doesn't exist).")
+            log.debug(f"Can't remove u/{username} (doesn't exist).")
             return False
-        self.logger.debug(f"Removed u/{username}.")
+        log.debug(f"Removed u/{username}.")
         del self.megadict[username]
         return True
 
@@ -139,13 +136,13 @@ class LocalDataStore(DataStore):
     def to_json(self, path: str) -> None:
         with open(path, "w") as f:
             json.dump({"meta": self.meta, "megadict": self.megadict}, f)
-        self.logger.debug(f"Saved LocalDataStore to JSON..")
+        log.debug(f"Saved LocalDataStore to JSON..")
 
     @classmethod
-    def from_json(cls, logger: Logger, path: str) -> LocalDataStore:
-        x = cls(logger)        
+    def from_json(cls, path: str) -> LocalDataStore:
+        x = cls()
         with open(path, "r") as f:
             raw = json.load(f)
             x.meta = raw["meta"]
             x.megadict = raw["megadict"]
-        logger.debug(f"Loaded LocalDataStore from {path}")
+        log.debug(f"Loaded LocalDataStore from {path}")
