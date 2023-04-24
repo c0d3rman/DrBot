@@ -8,6 +8,7 @@ Free to use by anyone for any reason (licensed under CC0)
 import sys
 import praw
 import logging
+from datetime import datetime
 
 from config import settings
 import util
@@ -49,7 +50,7 @@ def main():
     for modaction in subreddit.mod.stream.log(skip_existing=True):
     subreddit = reddit.subreddit(settings.subreddit)
         # Ignore any modlog entries that have already been processed
-        if modaction.created_utc <= data_store.get_last_updated():
+        if datetime.fromtimestamp(modaction.created_utc) <= data_store.get_last_updated():
             continue
 
         # If a removal reason is added, add the violation to the user's record
