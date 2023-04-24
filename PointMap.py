@@ -19,10 +19,10 @@ class PointMap:
 
         # Check for dupes
         if len(settings.point_config) != len(set(x["id"] for x in settings.point_config)):
-            self.logger.error("Duplicate removal reason IDs in config/settings.toml:")
+            message = "Duplicate removal reason IDs in config/settings.toml (the last instance of each one will be used):"
             for r in util.get_dupes(x["id"] for x in settings.point_config):
-                self.logger.error(f"\t{r}")
-            self.logger.error("The last instance of each one will be used.")
+                message += f"\n\t{r}"
+            self.logger.error(message)
 
         # Build the map
         point_map = {}
@@ -35,10 +35,10 @@ class PointMap:
         # Check for removal reasons on your sub that aren't in the map
         missing_reasons = set(r.title for r in reddit.subreddit(settings.subreddit).mod.removal_reasons) - set(point_map.keys())
         if len(missing_reasons) > 0:
-            self.logger.warning("Some removal reasons on your sub don't have an entry in config/settings.toml:")
+            message = "Some removal reasons on your sub don't have an entry in config/settings.toml (they will be treated as costing 0 points):"
             for r in missing_reasons:
-                self.logger.warning(f"\t{r}")
-            self.logger.warning("These removal reasons will be treated as costing 0 points.")
+                message += f"\n\t{r}"
+            self.logger.warning(message)
 
         self.point_map = point_map
 

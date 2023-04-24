@@ -1,6 +1,11 @@
 # Advanced settings to configure the minutiae of DRBOT.
 # You don't need to change these unless you want something specific.
 
+# Dry run mode - if you want to test the bot without actually banning anyone or sending any modmail.
+# It will log what it would have done instead of actually doing it.
+# Will still modify DRBOT's own data structures and wiki page.
+dry_run = true
+
 # Log file name.
 log_file = "log.log"
 
@@ -19,3 +24,8 @@ modmail_truncate_len = 100
 # You can force it to include mods by setting this to false.
 # Note that this may cause permissions issues with your sub - mods can't always ban other mods.
 exclude_mods = true
+
+# Safe mode - do greedy safety checks instead of lazy ones
+# e.g. check for comment re-approval and mod status on every comment instead of periodically/before banning
+# Will significantly slow down the bot and increase the traffic from your bot to reddit
+safe_mode = false

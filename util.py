@@ -1,5 +1,5 @@
-import os
 import logging
+import prawcore
 
 from config import settings
 
@@ -37,7 +37,7 @@ def getLogger():
     """
     Setup logger.
     """
-    BASE_FORMAT = "[%(asctime)s] [%(threadName)s] %(levelname)-8s | %(message)s"
+    BASE_FORMAT = "[%(asctime)s] [%(filename)s/%(funcName)s:%(lineno)d] %(levelname)s | %(message)s"
 
     logger = logging.getLogger("DRBOT")
     logger.setLevel(logging.DEBUG)
@@ -71,5 +71,11 @@ def get_dupes(L):
         seen2.add(item) if item in seen else seen.add(item)
     return seen2
 
-def is_mod(reddit, username):
-    return len(reddit.subreddit(settings.subreddit).moderator(username)) > 0
+def user_exists(reddit, username):
+    """Check if a user exists on reddit."""
+    try:
+        reddit.redditor(username).fullname
+    except prawcore.exceptions.NotFound:
+        return False
+    else:
+        return True
