@@ -97,11 +97,11 @@ class PointStore:
             self.logger.warning("u/[deleted] was scanned somehow (which shouldn't happen) - expunging.")
             return self.data_store.remove_user("[deleted]")
         # If the user doesn't exist anymore (most often because they deleted their account), dump eet
-        if not util.user_exists(username):
+        if not util.user_exists(self.reddit, username):
             self.logger.info(f"u/{username} doesn't exist anymore (probably because their account was deleted) - expunging.")
             return self.data_store.remove_user(username)
         # Exclude mods if requested
-        if settings.exclude_mods and len(self.reddit.subreddit(settings.subreddit).moderator(username)) > 0:
+        if check_mod and settings.exclude_mods and len(self.reddit.subreddit(settings.subreddit).moderator(username)) > 0:
             self.logger.info(f"u/{username} is a mod - expunging.")
             return self.data_store.remove_user(username)
         
