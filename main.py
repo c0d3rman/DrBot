@@ -13,6 +13,7 @@ from log import log
 from DataStores import LocalDataStore
 from PointStore import PointStore
 from PointMap import PointMap
+from InfiniteRetryStrategy import InfiniteRetryStrategy
 
 
 
@@ -28,6 +29,7 @@ def main():
                          username=settings.username,
                          password=settings.password,
                          user_agent=f"DRBOT r/${settings.subreddit} automated moderation bot")
+    reddit._core._retry_strategy_class = InfiniteRetryStrategy
     log.info(f"Logged in to Reddit as u/{settings.username}")
 
 
