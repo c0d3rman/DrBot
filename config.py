@@ -5,7 +5,7 @@ from dynaconf.utils.boxing import DynaBox
 
 def validate_points_config(l):
     for i, c in enumerate(l):
-        i += 1 # Convert from 0-indexed to 1-indexed
+        i += 1  # Convert from 0-indexed to 1-indexed
         if not type(c) is DynaBox:
             print(f"Broken removal reason #{i}: {c}")
             return False
@@ -48,7 +48,7 @@ settings = Dynaconf(
                   is_type_of=list, condition=validate_points_config, messages={"condition": "Invalid {name} in config/settings.toml"}),
 
         # advanced.toml
-        Validator('log_file', 'wiki_page', 'local_backup_file',
+        Validator('log_file', 'wiki_page', 'local_backup_file', 'praw_log_file',
                   is_type_of=str, messages={"operations": "Invalid setting for {name} in config/advanced.toml"}),
         Validator('console_log_level', 'file_log_level',
                   is_in=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"], messages={"operations": "{name} ({value}) in config/advanced.toml must be one of the following: CRITICAL, ERROR, WARNING, INFO, DEBUG"}),

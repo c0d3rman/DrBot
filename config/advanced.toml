@@ -1,9 +1,9 @@
 # Advanced settings to configure the minutiae of DRBOT.
 # You don't need to change these unless you want something specific.
 
-# Dry run mode - if you want to test the bot without actually banning anyone or sending any modmail.
+# Dry run mode - if you want to test DRBOT without actually banning anyone or sending any modmail.
 # It will log what it would have done instead of actually doing it.
-# Will still modify DRBOT's own data structures and wiki page.
+# Will still modify DRBOT's own local data structures.
 dry_run = true
 
 # Log file name. Leave blank to turn off the logfile (not recommended).
@@ -12,6 +12,11 @@ log_file = "log.log"
 # Log level (one of CRITICAL, ERROR, WARNING, INFO, DEBUG) to print to the console / save to the file.
 console_log_level = "INFO"
 file_log_level = "DEBUG"
+
+# Optionally, DRBOT can save PRAW's logging output to a file.
+# This details every request made to the reddit API.
+# It's off by default, but you can turn it on by setting this to a filename (e.g. praw.log).
+praw_log_file = ""
 
 # DRBOT stores its data on an automatically-managed wiki page on your sub.
 # You can change the name of the page here, or leave it blank if you want everything to be local (not recommended).

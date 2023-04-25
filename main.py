@@ -60,7 +60,7 @@ def main():
                 userdict = data_store.get_user(mod_action.target_author)
                 if mod_action.target_fullname in userdict and data_store.remove(mod_action.target_author, mod_action.target_fullname):
                     log.info(f"-{userdict[mod_action.target_fullname]['cost']} to u/{mod_action.target_author} from {mod_action.target_fullname} (re-approved), now at {data_store.get_user_total(mod_action.target_author)}.")
-            
+
             data_store.set_last_updated(int(mod_action.created_utc), mod_action.id)
 
     def save_local():

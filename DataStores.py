@@ -219,4 +219,4 @@ class WikiDataStore(LocalDataStore):
             reason="Automated page for DRBOT")
         self.reddit.subreddit(settings.subreddit).wiki[WikiDataStore.DATA_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
 
-        self.save() # Populate the pages
+        self.save()  # Populate the pages

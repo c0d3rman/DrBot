@@ -2,8 +2,15 @@ import logging
 from config import settings
 import util
 
-# Setup logger
 BASE_FORMAT = "[%(asctime)s] [%(filename)s/%(funcName)s:%(lineno)d] %(levelname)s | %(message)s"
+
+# If enabled, low PRAW output to file
+if settings.praw_log_file != "":
+    if settings.praw_log_file == settings.log_file:
+        raise Exception("You can't set DRBOT's log file and PRAW's log file to the same file!")
+    logging.basicConfig(filename=settings.praw_log_file, format=BASE_FORMAT, level=logging.DEBUG)
+
+# Setup logger
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
 
