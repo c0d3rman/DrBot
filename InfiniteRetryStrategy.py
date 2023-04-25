@@ -14,6 +14,8 @@ class InfiniteRetryStrategy(RetryStrategy):
     def _sleep_seconds(self):
         if self._attempts == 0:
             return None
+        if self._attempts > 3:
+            log.warn(f"Request still failing after multiple tries, retrying... ({self._attempts})")
         return random.randrange(0, min(self._cap, self._base * 2 ** self._attempts))
 
     def __init__(self, _base=2, _cap=60, _attempts=0):

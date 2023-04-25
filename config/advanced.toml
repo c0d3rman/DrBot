@@ -15,7 +15,7 @@ file_log_level = "DEBUG"
 
 # DRBOT stores its data on an automatically-managed wiki page on your sub.
 # You can change the name of the page here, or leave it blank if you want everything to be local (not recommended).
-wiki_page = "drbot_data"
+wiki_page = "drbot"
 
 # When modmailing you, truncate long comments to this many characters (or set to 0 to disable truncation).
 modmail_truncate_len = 100

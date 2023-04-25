@@ -10,7 +10,7 @@ import logging
 
 from config import settings
 from log import log
-from DataStores import LocalDataStore
+from DataStores import LocalDataStore, WikiDataStore
 from PointStore import PointStore
 from PointMap import PointMap
 from InfiniteRetryStrategy import InfiniteRetryStrategy
@@ -34,7 +34,7 @@ def main():
 
 
 
-    data_store = LocalDataStore()
+    data_store = WikiDataStore(reddit)
     point_map = PointMap(reddit)
     point_store = PointStore(reddit, point_map, data_store)
 

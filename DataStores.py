@@ -3,7 +3,11 @@ import abc
 from typing import Any, Optional
 from datetime import datetime
 import json
+import re
+from prawcore.exceptions import NotFound
+
 from log import log
+from config import settings
 
 
 class DataStore(metaclass=abc.ABCMeta):
@@ -133,10 +137,13 @@ class LocalDataStore(DataStore):
             self.meta["last_updated"]["ids"].append(id)
             return True
 
-    def to_json(self, path: str) -> None:
-        with open(path, "w") as f:
-            json.dump({"meta": self.meta, "megadict": self.megadict}, f)
-        log.debug(f"Saved LocalDataStore to JSON..")
+    def to_json(self, path: str | None = None) -> None:
+        data = json.dumps({"meta": self.meta, "megadict": self.megadict})
+        if not path is None:
+            with open(path, "w") as f:
+                f.write(data)
+            log.debug(f"Saved LocalDataStore to {path}")
+        return data
 
     @classmethod
     def from_json(cls, path: str) -> LocalDataStore:
@@ -146,3 +153,70 @@ class LocalDataStore(DataStore):
             x.meta = raw["meta"]
             x.megadict = raw["megadict"]
         log.debug(f"Loaded LocalDataStore from {path}")
+
+
+class WikiDataStore(LocalDataStore):
+    DATA_PAGE = f"{settings.wiki_page}/data"
+
+    def __init__(self, reddit):
+        super().__init__()
+        self.reddit = reddit
+
+        # First time setup - wiki page creation
+        if not self.page_exists(settings.wiki_page):
+            self._create_pages()
+
+        self._load()
+
+    def page_exists(self, page: str) -> bool:
+        try:
+            self.reddit.subreddit(settings.subreddit).wiki[page].may_revise
+            return True
+        except NotFound:
+            return False
+
+    def save(self) -> None:
+        log.info("Saving data to wiki.")
+
+        if settings.dry_run:
+            log.info("(Skipping actual save because dry-run mode is active.)")
+            return
+
+        self.reddit.subreddit(settings.subreddit).wiki[WikiDataStore.DATA_PAGE].edit(
+            content=f"// This page houses [DRBOT](https://github.com/c0d3rman/DRBOT)'s user records. **DO NOT EDIT!**\n\n{self.to_json()}",
+            reason="Automated page for DRBOT")
+
+    def _load(self) -> None:
+        log.info("Loading data from wiki.")
+        try:
+            data = self.reddit.subreddit(settings.subreddit).wiki[WikiDataStore.DATA_PAGE].content_md
+        except NotFound:
+            if settings.dry_run:
+                log.info("Because dry-run mode is active, no wiki pages have been created, so no data was loaded from the wiki.")
+                return
+            raise Exception("WikiDataStore couldn't load data because the necessary pages don't exist! Are you trying to manually call _load()?")
+        data = re.sub(r"^//.*?\n", "", data)  # Remove comments
+        data = json.loads(data)
+        self.megadict = data["megadict"]
+        self.meta = data["meta"]
+
+    def _create_pages(self) -> None:
+        log.info(f"Creating necessary wiki pages.")
+
+        if settings.dry_run:
+            log.info("(Skipping actual page creation because dry-run mode is active.)")
+            return
+
+        self.reddit.subreddit(settings.subreddit).wiki.create(
+            name=settings.wiki_page,
+            content="This page and its children house the data for [DRBOT](https://github.com/c0d3rman/DRBOT). Do not edit.",
+            reason="Automated page for DRBOT")
+        self.reddit.subreddit(settings.subreddit).wiki[settings.wiki_page].mod.update(listed=True, permlevel=2)  # Make it mod-only
+
+        self.reddit.subreddit(settings.subreddit).wiki.create(
+            name=WikiDataStore.DATA_PAGE,
+            content=f"",
+            reason="Automated page for DRBOT")
+        self.reddit.subreddit(settings.subreddit).wiki[WikiDataStore.DATA_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
+
+        self.save() # Populate the pages

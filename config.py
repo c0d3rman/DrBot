@@ -48,8 +48,10 @@ settings = Dynaconf(
                   is_type_of=list, condition=validate_points_config, messages={"condition": "Invalid {name} in config/settings.toml"}),
 
         # advanced.toml
-        Validator('log_file', 'wiki_page',
+        Validator('log_file',
                   ne="", is_type_of=str, messages={"operations": "You must set a {name} in config/advanced.toml"}),
+        Validator('wiki_page',
+                  is_type_of=str, messages={"operations": "Invalid setting for {name} in config/advanced.toml"}),
         Validator('console_log_level', 'file_log_level',
                   is_in=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"], messages={"operations": "{name} ({value}) in config/advanced.toml must be one of the following: CRITICAL, ERROR, WARNING, INFO, DEBUG"}),
         Validator('modmail_truncate_len',
