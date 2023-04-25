@@ -14,12 +14,13 @@ console_handler.setLevel(settings.console_log_level)
 log.addHandler(console_handler)
 
 # Logging to file
-try:
-    logfile_handler = logging.FileHandler(settings.log_file)
-except Exception as e:
-    log.critical(f"Couldn't open the log file: {settings.log_file}")
-    log.critical(e)
-    raise e
-logfile_handler.setFormatter(logging.Formatter(fmt=BASE_FORMAT))
-logfile_handler.setLevel(settings.file_log_level)
-log.addHandler(logfile_handler)
+if settings.log_file != "":
+    try:
+        logfile_handler = logging.FileHandler(settings.log_file)
+    except Exception as e:
+        log.critical(f"Couldn't open the log file: {settings.log_file}")
+        log.critical(e)
+        raise e
+    logfile_handler.setFormatter(logging.Formatter(fmt=BASE_FORMAT))
+    logfile_handler.setLevel(settings.file_log_level)
+    log.addHandler(logfile_handler)

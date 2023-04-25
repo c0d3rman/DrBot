@@ -7,6 +7,8 @@ Free to use by anyone for any reason (licensed under CC0)
 
 import praw
 import logging
+import schedule
+import time
 
 from config import settings
 from log import log
@@ -38,22 +40,43 @@ def main():
     point_map = PointMap(reddit)
     point_store = PointStore(reddit, point_map, data_store)
 
-    # Continually iterate through modlog entries
-    subreddit = reddit.subreddit(settings.subreddit)
-    for mod_action in subreddit.mod.stream.log(skip_existing=True):
-        # Ignore any modlog entries that have already been processed
-        if not data_store.is_after_last_updated(int(mod_action.created_utc), mod_action.id):
-            continue
+    def process_modlog():
+        log.debug("Processing new modlog entries.")
 
-        # If a removal reason is added, add the violation to the user's record
-        if mod_action.action == "addremovalreason":
-            point_store.add(mod_action)
-        # If a comment has been re-approved, remove it from the record
-        elif mod_action.action == "approvecomment":
-            userdict = data_store.get_user(mod_action.target_author)
-            if mod_action.target_fullname in userdict and data_store.remove(mod_action.target_author, mod_action.target_fullname):
-                log.info(f"-{userdict[mod_action.target_fullname]['cost']} to u/{mod_action.target_author} from {mod_action.target_fullname} (re-approved), now at {data_store.get_user_total(mod_action.target_author)}.")
+        # Collect relevant entries
+        entries = []
+        for mod_action in reddit.subreddit(settings.subreddit).mod.log(limit=100):
+            if not data_store.is_after_last_updated(int(mod_action.created_utc), mod_action.id):
+                break
+            entries.append(mod_action)
 
+        # Process them in reverse order (earliest to latest)
+        for mod_action in reversed(entries):
+            # If a removal reason is added, add the violation to the user's record
+            if mod_action.action == "addremovalreason":
+                point_store.add(mod_action)
+            # If a comment has been re-approved, remove it from the record
+            elif mod_action.action == "approvecomment":
+                userdict = data_store.get_user(mod_action.target_author)
+                if mod_action.target_fullname in userdict and data_store.remove(mod_action.target_author, mod_action.target_fullname):
+                    log.info(f"-{userdict[mod_action.target_fullname]['cost']} to u/{mod_action.target_author} from {mod_action.target_fullname} (re-approved), now at {data_store.get_user_total(mod_action.target_author)}.")
+            
+            data_store.set_last_updated(int(mod_action.created_utc), mod_action.id)
+
+    def save_local():
+        log.info(f"Backing up data locally ({settings.local_backup_file})")
+        data_store.to_json(settings.local_backup_file)
+
+    schedule.every(5).seconds.do(process_modlog)
+    schedule.every().hour.do(point_store.scan_all)
+    if settings.local_backup_file != "":
+        schedule.every(5).minutes.do(save_local)
+    if type(data_store) is WikiDataStore:
+        schedule.every().hour.do(data_store.save)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
 
 if __name__ == "__main__":

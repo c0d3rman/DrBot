@@ -78,7 +78,6 @@ class PointStore:
             log.error(f"Failed to add violation {violation_fullname} to u/{username} (DataStore issue).")
             return False
 
-        self.data_store.set_last_updated(removal_time, mod_action.id)
         new_total = self.data_store.get_user_total(username)
         log.info(f"+{point_cost} to u/{username} from {violation_fullname}, now at {new_total}.")
 

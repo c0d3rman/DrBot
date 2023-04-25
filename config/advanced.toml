@@ -6,7 +6,7 @@
 # Will still modify DRBOT's own data structures and wiki page.
 dry_run = true
 
-# Log file name.
+# Log file name. Leave blank to turn off the logfile (not recommended).
 log_file = "log.log"
 
 # Log level (one of CRITICAL, ERROR, WARNING, INFO, DEBUG) to print to the console / save to the file.
@@ -16,6 +16,10 @@ file_log_level = "DEBUG"
 # DRBOT stores its data on an automatically-managed wiki page on your sub.
 # You can change the name of the page here, or leave it blank if you want everything to be local (not recommended).
 wiki_page = "drbot"
+
+# DRBOT also makes periodic local backups just in case things go wrong.
+# You can set the filename of the backup here, or leave it blank to turn this off.
+local_backup_file = "backup.json"
 
 # When modmailing you, truncate long comments to this many characters (or set to 0 to disable truncation).
 modmail_truncate_len = 100
