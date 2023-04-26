@@ -1,8 +1,7 @@
 import json
-
-from config import settings
-from log import log
-import util
+from .config import settings
+from .log import log
+from .util import get_dupes
 
 
 class PointMap:
@@ -19,7 +18,7 @@ class PointMap:
         # Check for dupes
         if len(settings.point_config) != len(set(x["id"] for x in settings.point_config)):
             message = "Duplicate removal reason IDs in config/settings.toml (the last instance of each one will be used):"
-            for r in util.get_dupes(x["id"] for x in settings.point_config):
+            for r in get_dupes(x["id"] for x in settings.point_config):
                 message += f"\n\t{r}"
             log.error(message)
 

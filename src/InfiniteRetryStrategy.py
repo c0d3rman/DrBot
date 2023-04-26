@@ -1,6 +1,6 @@
 from prawcore.sessions import RetryStrategy
 import random
-from log import log
+from .log import log
 
 
 class InfiniteRetryStrategy(RetryStrategy):

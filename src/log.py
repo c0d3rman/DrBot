@@ -1,6 +1,6 @@
 import logging
-from config import settings
-import util
+from .config import settings
+from .util import LogFormatter
 
 BASE_FORMAT = "[%(asctime)s] [%(filename)s/%(funcName)s:%(lineno)d] %(levelname)s | %(message)s"
 
@@ -16,7 +16,7 @@ log.setLevel(logging.DEBUG)
 
 # Logging to console
 console_handler = logging.StreamHandler()
-console_handler.setFormatter(util.LogFormatter(fmt=BASE_FORMAT))
+console_handler.setFormatter(LogFormatter(fmt=BASE_FORMAT))
 console_handler.setLevel(settings.console_log_level)
 log.addHandler(console_handler)
 

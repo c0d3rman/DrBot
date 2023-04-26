@@ -9,26 +9,26 @@ import praw
 import logging
 import schedule
 import time
-
-from config import settings
-from log import log
-from DataStores import LocalDataStore, WikiDataStore
-from PointStore import PointStore
-from PointMap import PointMap
-from InfiniteRetryStrategy import InfiniteRetryStrategy
-
+from src.config import settings
+from src.log import log
+from src.DataStores import LocalDataStore, WikiDataStore
+from src.PointStore import PointStore
+from src.PointMap import PointMap
+from src.InfiniteRetryStrategy import InfiniteRetryStrategy
 
 
 
-
+DRBOT_CLIENT_ID_PATH = "src/drbot_client_id.txt"
 
 
 def main():
     log.info(f"DRBOT for r/{settings.subreddit} starting up")
 
     if settings.refresh_token != "":
-        reddit = praw.Reddit(client_id=settings.drbot_client_id,
-                             client_secret=None,  # settings.drbot_client_secret,
+        with open(DRBOT_CLIENT_ID_PATH, "r") as f:
+            drbot_client_id = f.read()
+        reddit = praw.Reddit(client_id=drbot_client_id,
+                             client_secret=None,
                              refresh_token=settings.refresh_token,
                              user_agent="DRBOT")
     else:
@@ -43,7 +43,10 @@ def main():
 
 
 
-    data_store = WikiDataStore(reddit)
+    if settings.wiki_page != "":
+        data_store = WikiDataStore(reddit)
+    else:
+        data_store = LocalDataStore()
     point_map = PointMap(reddit)
     point_store = PointStore(reddit, point_map, data_store)
 
@@ -71,8 +74,9 @@ def main():
             data_store.set_last_updated(int(mod_action.created_utc), mod_action.id)
 
     def save_local():
-        log.info(f"Backing up data locally ({settings.local_backup_file})")
-        data_store.to_json(settings.local_backup_file)
+        if settings.local_backup_file != "":
+            log.info(f"Backing up data locally ({settings.local_backup_file})")
+            data_store.to_json(settings.local_backup_file)
 
     schedule.every(5).seconds.do(process_modlog)
     schedule.every().hour.do(point_store.scan_all)

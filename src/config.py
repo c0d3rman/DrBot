@@ -1,8 +1,8 @@
-
 from dynaconf import Dynaconf, Validator
 from dynaconf.validator import OrValidator
 from dynaconf.utils.boxing import DynaBox
 import sys
+import os.path
 
 
 def validate_points_config(l):
@@ -27,9 +27,15 @@ def validate_points_config(l):
     return True
 
 
+SETTINGS_PATH = os.path.join(os.path.dirname(__file__), '../data/settings.toml')
+
+if not os.path.isfile(SETTINGS_PATH):
+    print("There's no settings file. Run first_time_setup.py")
+    sys.exit(1)
+
 settings = Dynaconf(
     envvar_prefix="DRBOT",
-    settings_files=['config/settings.toml', 'config/advanced.toml'],
+    settings_files=[SETTINGS_PATH],
     validate_on_update="all",
     validators=[
         OrValidator(
@@ -37,8 +43,10 @@ settings = Dynaconf(
             Validator('client_id', 'client_secret', 'username', 'password', ne="", is_type_of=str),
             messages={"combined": "You must authenticate DRBOT. Run first_time_setup.py"}
         ),
-        Validator('subreddit', 'log_file', 'praw_log_file', 'wiki_page', 'local_backup_file', 'drbot_client_id',
+        Validator('subreddit',
                   ne="", is_type_of=str, messages={"operations": "You must set '{name}' in config/settings.toml"}),
+        Validator('log_file', 'praw_log_file', 'wiki_page', 'local_backup_file',
+                  is_type_of=str, messages={"operations": "Invalid '{name}' in config/settings.toml"}),
         Validator('point_threshold',
                   gt=0, is_type_of=int, messages={"operations": "{name} ({value}) must be at least 1 in config/settings.toml"}),
         Validator('point_config',

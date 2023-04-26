@@ -6,6 +6,12 @@ import re
 import sys
 import praw
 import webbrowser
+import os.path
+
+
+SETTINGS_PATH = "data/settings.toml"
+DEFAULT_SETTINGS_PATH = "src/default_settings.toml"
+DRBOT_CLIENT_ID_PATH = "src/drbot_client_id.txt"
 
 
 def reddit_login():
@@ -33,10 +39,14 @@ Content-Length: {len(body)}
     # The scopes DRBOT needs - see https://praw.readthedocs.io/en/latest/tutorials/refresh_token.html#reddit-oauth2-scopes
     scopes = ["identity", "modcontributors", "modlog", "modmail", "modself", "modwiki", "read", "wikiedit", "wikiread"]
 
+    # Get ID
+    with open(DRBOT_CLIENT_ID_PATH, "r") as f:
+        drbot_client_id = f.read()
+
     # Set up local agent
     reddit = praw.Reddit(
-        client_id="IfiCxOAZUNb-nbKSYCLt5A",
-        client_secret="bkbWJQbPwrSt_c48nc9oEl5C0N-hsw",
+        client_id=drbot_client_id,
+        client_secret=None,
         redirect_uri="http://localhost:8080/",
         user_agent="DRBOT")
 
@@ -86,12 +96,22 @@ def validate_manual_login(client_id, client_secret, username, password):
     return "Failed to log in."
 
 
-try:
+def main():
     answers = {}
 
     print("""Welcome to DRBOT.
 This script will help you set up the required settings to make DRBOT work for your sub.
 """)
+
+    if os.path.isfile(SETTINGS_PATH):
+        choices = ["Keep it (and exit)", "Modify it", "Discard it"]
+        decision = questionary.select(
+            f"There's already a settings file in {SETTINGS_PATH}. What do you want to do with it?",
+            choices=choices, default=choices[0]).unsafe_ask()
+        if decision == choices[0]:
+            raise KeyboardInterrupt
+        elif decision == choices[1]:
+            answers["_modify_existing_file"] = True
 
     answers["subreddit"] = questionary.text(
         "What subreddit is this for? r/",
@@ -124,18 +144,27 @@ Press ENTER to continue...
             validate=lambda p: validate_manual_login(answers["client_id"], answers["client_secret"], answers["username"], p),
             validate_while_typing=False).unsafe_ask()
 
-except KeyboardInterrupt:
-    print("Cancelling setup. No changes have been made. Goodbye")
-    sys.exit(1)
 
-print("All done! Saving settings...")
+    return answers
 
-with open("config/settings.toml", "r") as f:
-    settings = tomlkit.parse(f.read())
 
-settings.update(answers)
+if __name__ == "__main__":
+    try:
+        answers = main()
+    except KeyboardInterrupt:
+        print("Cancelling setup. No changes have been made. Goodbye")
+        sys.exit(1)
+    print("All done! Saving settings...")
 
-with open("config/settings.toml", "w") as f:
-    f.write(tomlkit.dumps(settings))
+    baseSettingsPath = DEFAULT_SETTINGS_PATH
+    if "_modify_existing_file" in answers:
+        baseSettingsPath = SETTINGS_PATH
+        del answers["_modify_existing_file"]
+    with open(baseSettingsPath, "r") as f:
+        settings = tomlkit.parse(f.read())
+    settings.update(answers)
+    with open(SETTINGS_PATH, "w") as f:
+        f.write(tomlkit.dumps(settings))
 
-print("You're ready to use DRBOT. Goodbye!")
+    print("If you want to change advanced settings, do so directly in data/settings.toml")
+    print("You're ready to use DRBOT. Goodbye!")

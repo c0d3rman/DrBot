@@ -5,9 +5,8 @@ from datetime import datetime
 import json
 import re
 from prawcore.exceptions import NotFound
-
-from log import log
-from config import settings
+from .log import log
+from .config import settings
 
 
 class DataStore(metaclass=abc.ABCMeta):

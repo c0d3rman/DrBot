@@ -73,7 +73,7 @@ autoban_mode = 1
 # =======
 
 # Log file name. Leave blank to turn off the logfile (not recommended).
-log_file = "log.log"
+log_file = "data/log.log"
 
 # Minimum log level to print to console / save to file.
 # Must be one of CRITICAL, ERROR, WARNING, INFO, DEBUG
@@ -82,7 +82,7 @@ file_log_level = "DEBUG"
 
 # Optionally, DRBOT can save PRAW's logging output to a file.
 # This records every single request made to the reddit API (which can get big fast).
-# It's off by default, but you can turn it on by setting this to a filename like "praw.log".
+# It's off by default, but you can turn it on by setting this to a filename like "data/praw.log".
 praw_log_file = ""
 
 
@@ -116,7 +116,7 @@ wiki_page = "drbot"
 
 # DRBOT also makes periodic local backups just in case things go wrong.
 # You can set the filename of the backup here, or leave it blank to turn this off.
-local_backup_file = "backup.json"
+local_backup_file = "data/backup.json"
 
 
 # =========
@@ -126,13 +126,3 @@ local_backup_file = "backup.json"
 # When modmailing you, truncate long comments to this many characters (or set to 0 to disable truncation).
 # Warning: if you set this too high, the message may go over the character limit.
 modmail_truncate_len = 100
-
-
-# =====
-# Other
-# =====
-
-# For Reddit-based authentication, DRBOT has an app registered with Reddit.
-# You shouldn't change this unless you really know what you're doing
-# and have a completely independent instance of DRBOT running.
-drbot_client_id = "bqWLOtXlkLqFXMTswPkrnQ"

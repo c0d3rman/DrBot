@@ -1,10 +1,9 @@
 import re
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-
-from config import settings
-from log import log
-import util
+from .config import settings
+from .log import log
+from .util import user_exists
 
 
 class PointStore:
@@ -50,7 +49,7 @@ class PointStore:
         # Safe mode checks
         if settings.safe_mode:
             # Check if the user's account was deleted/suspended
-            if not util.user_exists(self.reddit, username):
+            if not user_exists(self.reddit, username):
                 log.info(f"u/{username}'s account doesn't exist anymore; skipping.")
                 return False
 
@@ -101,7 +100,7 @@ class PointStore:
             log.warning("u/[deleted] was scanned somehow (which shouldn't happen) - expunging.")
             return self.data_store.remove_user("[deleted]")
         # If the user doesn't exist anymore (most often because they deleted their account), dump eet
-        if not util.user_exists(self.reddit, username):
+        if not user_exists(self.reddit, username):
             log.info(f"u/{username}'s account doesn't exist anymore - expunging.")
             return self.data_store.remove_user(username)
         # Exclude mods if requested
