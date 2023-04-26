@@ -104,6 +104,15 @@ safe_mode = false
 # This may cause permissions issues with your sub - mods can't always ban other mods.
 exclude_mods = true
 
+# You can make exceptions for individual removals and give them custom point values
+# by putting the point number inside square brackets anywhere in the mod note of the removal, like this:
+#   [0]
+# This lets you make special exceptions to not count a removal as a strike against a user
+# or give extra points for a removal.
+# This requires extra requests though, which slows down the bot, so you can turn it off here.
+# (If safe mode is active then these requests already happen, so this won't slow things down.)
+custom_point_mod_notes = true
+
 
 # =======
 # Storage

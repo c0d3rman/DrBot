@@ -51,3 +51,13 @@ def user_exists(reddit, username):
         return False  # Account suspended
     else:
         return True
+
+
+def get_thing(reddit, fullname):
+    """For getting a comment or submission from a fullname when you don't know which one it is."""
+    if fullname.startswith("t1_"):
+        return reddit.comment(fullname)
+    elif fullname.startswith("t3_"):
+        return reddit.submission(fullname)
+    else:
+        raise Exception(f"Unknown fullname type: {fullname}")

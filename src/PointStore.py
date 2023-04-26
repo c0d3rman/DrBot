@@ -3,7 +3,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from .config import settings
 from .log import log
-from .util import user_exists
+from .util import user_exists, get_thing
 
 
 class PointStore:
@@ -27,6 +27,7 @@ class PointStore:
         violation_fullname = mod_action.target_fullname
         username = mod_action.target_author
         removal_time = datetime.fromtimestamp(mod_action.created_utc)
+        violation = None  # For if/when we fetch the violation, so we don't do it twice
 
         log.debug(f"Processing removal of {violation_fullname} with reason: {removal_reason_id}")
 
@@ -37,6 +38,13 @@ class PointStore:
 
         # Get point cost
         point_cost = self.point_map[removal_reason_id]
+        if settings.custom_point_mod_notes:  # Check for manual point exception in mod note
+            if violation is None:
+                violation = get_thing(self.reddit, mod_action.target_fullname)
+            result = re.search(r"\[(\d+)\]", violation.mod_note)
+            if not result is None:
+                point_cost = int(result.group(1))
+                log.info(f"{violation_fullname} has a custom point cost of {point_cost} as set by its mod note.")
         if point_cost == 0:
             log.debug(f"{violation_fullname} costs 0 points; skipping.")
             return False
@@ -50,7 +58,7 @@ class PointStore:
         if settings.safe_mode:
             # Check if the user's account was deleted/suspended
             if not user_exists(self.reddit, username):
-                log.info(f"u/{username}'s account doesn't exist anymore; skipping.")
+                log.debug(f"u/{username}'s account doesn't exist anymore; skipping.")
                 return False
 
             # If exclude_mods is on, check if the user is a mod
@@ -59,8 +67,9 @@ class PointStore:
                 return False
 
             # Check if this submission has already been re-approved
-            m = self.reddit.comment if violation_fullname.startswith("t1_") else self.reddit.submission
-            if not m(violation_fullname[3:]).removed:
+            if violation is None:  # Technically we can do this for free if custom_point_mod_notes is on, but we don't unless safe_mode is active for consistency
+                violation = get_thing(self.reddit, mod_action.target_fullname)
+            if not violation.removed:
                 log.debug(f"{violation_fullname} already re-approved; skipping.")
 
         # Calculate expiration
@@ -111,8 +120,7 @@ class PointStore:
         userdict = self.data_store.get_user(username)
         for violation_fullname in userdict:
             # Check for re-approval
-            m = self.reddit.comment if violation_fullname.startswith("t1_") else self.reddit.submission
-            violation = m(violation_fullname[3:])
+            violation = get_thing(self.reddit, violation_fullname)
             if not violation.removed:
                 if not self.data_store.remove(username, violation_fullname):
                     log.error(f"Failed to remove re-approved violation {violation_fullname} from u/{username} (DataStore issue)")
@@ -185,20 +193,19 @@ class PointStore:
             userdict = self.data_store.get_user(username)
             message = f"u/{username}'s violations have passed the {settings.point_threshold} point threshold:\n\n"
             for fullname in userdict:
+                violation = get_thing(self.reddit, fullname)
                 if fullname.startswith("t1_"):
-                    submission = self.reddit.comment(fullname[3:])
                     kind = "comment"
-                    text = submission.body
-                else:
-                    submission = self.reddit.submission(fullname[3:])
+                    text = violation.body
+                elif fullname.startswith("t3_"):
                     kind = "post"
-                    text = submission.title
+                    text = violation.title
                 text = re.sub(r"\s*\n\s*", " ", text)  # Strip newlines
                 if settings.modmail_truncate_len > 0 and len(text) > settings.modmail_truncate_len:
                     text = text[:settings.modmail_truncate_len - 3] + "..."
-                date = datetime.fromtimestamp(submission.banned_at_utc).strftime("%m/%d/%y")
+                date = datetime.fromtimestamp(violation.banned_at_utc).strftime("%m/%d/%y")
                 points = userdict[fullname]['cost']
-                message += f"- {date} {kind} ({points} point{'s' if points > 1 else ''}): [{text}]({submission.permalink}) ({submission.mod_reason_title})\n"
+                message += f"- {date} {kind} ({points} point{'s' if points > 1 else ''}): [{text}]({violation.permalink}) ({violation.mod_reason_title})\n"
             message += f"\n(This is an automated message, {'a' if didBan else 'no'} ban has been issued.)"
 
             # Send modmail
