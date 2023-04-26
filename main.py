@@ -81,6 +81,7 @@ def main():
     schedule.every(5).seconds.do(process_modlog)
     schedule.every().hour.do(point_store.scan_all)
     if settings.local_backup_file != "":
+        save_local()
         schedule.every(5).minutes.do(save_local)
     if type(data_store) is WikiDataStore:
         schedule.every().hour.do(data_store.save)
