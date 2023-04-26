@@ -26,11 +26,18 @@ from InfiniteRetryStrategy import InfiniteRetryStrategy
 def main():
     log.info(f"DRBOT for r/{settings.subreddit} starting up")
 
-    reddit = praw.Reddit(client_id=settings.client_id,
-                         client_secret=settings.client_secret,
-                         username=settings.username,
-                         password=settings.password,
-                         user_agent=f"DRBOT r/${settings.subreddit} automated moderation bot")
+    if settings.refresh_token != "":
+        reddit = praw.Reddit(client_id=settings.drbot_client_id,
+                             client_secret=None,  # settings.drbot_client_secret,
+                             refresh_token=settings.refresh_token,
+                             user_agent="DRBOT")
+    else:
+        reddit = praw.Reddit(client_id=settings.client_id,
+                             client_secret=settings.client_secret,
+                             username=settings.username,
+                             password=settings.password,
+                             user_agent=f"DRBOT")
+
     reddit._core._retry_strategy_class = InfiniteRetryStrategy
     log.info(f"Logged in to Reddit as u/{settings.username}")
 
