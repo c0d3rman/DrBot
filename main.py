@@ -13,6 +13,7 @@ from src.log import log
 from src.util import init_reddit
 from src.ModlogAgent import ModlogAgent
 from src.SidebarSyncAgent import SidebarSyncAgent
+from src.UserFlairAgent import UserFlairAgent
 from src.WikiStore import WikiStore
 from src.PointsHandler import PointsHandler
 
@@ -38,6 +39,11 @@ def main():
         wiki_store = WikiStore(modlog_agent)
         schedule.every().hour.do(wiki_store.save)
 
+    # Star User flair enforcement
+    user_flair_agent = UserFlairAgent(reddit, restricted_phrase="⭐", permitted_css_class="staruser")
+    schedule.every(1).hour.do(user_flair_agent.run)
+
+    # The scheduler loop
     schedule.run_all()
     while True:
         schedule.run_pending()

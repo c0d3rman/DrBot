@@ -40,6 +40,7 @@ Content-Length: {len(body)}
     scopes = [
         "identity",  # Basic - know the username of the account we log into.
         "modcontributors",  # For banning users.
+        "modflair",  # For managing flair (Fresh Friday + star user).
         "modlog",  # For reading the modlog.
         "modmail",  # For sending modmail to mods.
         "modself",  # Unused - for accepting mod invites.
