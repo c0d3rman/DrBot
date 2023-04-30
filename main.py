@@ -10,7 +10,9 @@ import schedule
 import time
 from src.config import settings
 from src.log import log
-from src.Agent import Agent
+from src.util import init_reddit
+from src.ModlogAgent import ModlogAgent
+from src.SidebarSyncAgent import SidebarSyncAgent
 from src.WikiStore import WikiStore
 from src.PointsHandler import PointsHandler
 
@@ -18,17 +20,22 @@ from src.PointsHandler import PointsHandler
 def main():
     log.info(f"DRBOT for r/{settings.subreddit} starting up")
 
-    agent = Agent()
+    reddit = init_reddit()
+
+    # Sidebar sync
+    sidebar_sync_agent = SidebarSyncAgent(reddit)
+    schedule.every(1).day.do(sidebar_sync_agent.run)
+
+    # Modlog agent
+    modlog_agent = ModlogAgent(reddit)
 
     points_handler = PointsHandler()
-    agent.register("PointsHandler", points_handler)
+    modlog_agent.register("PointsHandler", points_handler)
 
-    schedule.every(5).seconds.do(agent.run)
+    schedule.every(5).seconds.do(modlog_agent.run)
     schedule.every().hour.do(points_handler.scan_all)
-    if settings.local_backup_file != "":
-        schedule.every(5).minutes.do(agent.save)
     if settings.wiki_page != "":
-        wiki_store = WikiStore(agent)
+        wiki_store = WikiStore(modlog_agent)
         schedule.every().hour.do(wiki_store.save)
 
     schedule.run_all()

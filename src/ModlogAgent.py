@@ -1,41 +1,19 @@
-import praw
 import datetime
 import json
 from .config import settings
 from .log import log
-from .InfiniteRetryStrategy import InfiniteRetryStrategy
 from .Handler import Handler
 
 
-DRBOT_CLIENT_ID_PATH = "src/drbot_client_id.txt"
-
-
-class Agent:
-    """A bot that scans incoming modlog entries and runs sub-tools on them.
+class ModlogAgent:
+    """Scans incoming modlog entries and runs sub-tools on them.
     Provides a Reddit object and a writable data store.
     Manages syncing data to the wiki."""
 
-    def __init__(self):
+    def __init__(self, reddit):
+        self.reddit = reddit
         self.data_store = {"_meta": {"version": "1.0", "last_processed": None}}
-        self._initialize_reddit()
         self.handlers = {}
-
-    def _initialize_reddit(self):
-        if settings.refresh_token != "":
-            with open(DRBOT_CLIENT_ID_PATH, "r") as f:
-                drbot_client_id = f.read()
-            self.reddit = praw.Reddit(client_id=drbot_client_id,
-                                      client_secret=None,
-                                      refresh_token=settings.refresh_token,
-                                      user_agent="DRBOT")
-        else:
-            self.reddit = praw.Reddit(client_id=settings.client_id,
-                                      client_secret=settings.client_secret,
-                                      username=settings.username,
-                                      password=settings.password,
-                                      user_agent=f"DRBOT")
-        self.reddit._core._retry_strategy_class = InfiniteRetryStrategy
-        log.info(f"Logged in to Reddit as u/{settings.username}")
 
     def register(self, name: str, handler: Handler) -> None:
         if name == "_meta":
@@ -60,6 +38,9 @@ class Agent:
             for handler in self.handlers.values():
                 handler.handle(mod_action)
 
+        # Make a local backup
+        self.save()
+
     @classmethod
     def _json_encoder(self, obj):
         if isinstance(obj, (datetime.date, datetime.datetime)):
@@ -73,10 +54,10 @@ class Agent:
         return d
 
     def to_json(self) -> None:
-        return json.dumps(self.data_store, default=Agent._json_encoder)
+        return json.dumps(self.data_store, default=ModlogAgent._json_encoder)
 
     def from_json(self, s: str) -> None:
-        self.data_store = json.loads(s, object_hook=Agent._json_decoder)
+        self.data_store = json.loads(s, object_hook=ModlogAgent._json_decoder)
         assert "_meta" in self.data_store
 
     def save(self):

@@ -37,7 +37,18 @@ Content-Length: {len(body)}
         client.close()
 
     # The scopes DRBOT needs - see https://praw.readthedocs.io/en/latest/tutorials/refresh_token.html#reddit-oauth2-scopes
-    scopes = ["identity", "modcontributors", "modlog", "modmail", "modself", "modwiki", "read", "wikiedit", "wikiread"]
+    scopes = [
+        "identity",  # Basic - know the username of the account we log into.
+        "modcontributors",  # For banning users.
+        "modlog",  # For reading the modlog.
+        "modmail",  # For sending modmail to mods.
+        "modself",  # Unused - for accepting mod invites.
+        "modwiki",  # For making DRBOT's wiki pages mod-only.
+        "read",  # For reading posts/comments.
+        "structuredstyles",  # For reading the sidebar in SidebarSyncAgent.
+        "wikiedit",  # For editing the DRBOT data stored in the wiki.
+        "wikiread"  # For editing the DRBOT data stored in the wiki.
+    ]
 
     # Get ID
     with open(DRBOT_CLIENT_ID_PATH, "r") as f:
