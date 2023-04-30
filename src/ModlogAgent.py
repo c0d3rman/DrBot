@@ -32,6 +32,10 @@ class ModlogAgent:
             return
         log.info(f"Processing {len(entries)} new modlog entries.")
 
+        # Let all the handlers know we're starting a new run
+        for handler in self.handlers.values():
+            handler.start_run()
+
         # Process entries from earliest to latest
         for mod_action in reversed(entries):
             self.data_store["_meta"]["last_processed"] = mod_action.id
