@@ -58,6 +58,6 @@ def get_thing(reddit, fullname):
     if fullname.startswith("t1_"):
         return reddit.comment(fullname)
     elif fullname.startswith("t3_"):
-        return reddit.submission(fullname)
+        return reddit.submission(fullname[3:]) # PRAW requires us to chop off the "t3_"
     else:
         raise Exception(f"Unknown fullname type: {fullname}")
