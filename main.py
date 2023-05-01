@@ -41,7 +41,7 @@ def main():
     schedule.every().hour.do(points_handler.scan_all)
     if settings.wiki_page != "":
         wiki_store = WikiStore(modlog_agent)
-        schedule.every().hour.do(wiki_store.save)
+        schedule.every(10).minutes.do(wiki_store.save)
 
     # Star User flair enforcement
     user_flair_agent = UserFlairAgent(reddit, restricted_phrase="⭐", permitted_css_class="staruser")
