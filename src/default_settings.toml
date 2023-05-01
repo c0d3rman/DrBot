@@ -113,6 +113,12 @@ exclude_mods = true
 # (If safe mode is active then these requests already happen, so this won't slow things down.)
 custom_point_mod_notes = true
 
+# The first time you run DRBOT, should it look at previous modlog entries retroactively,
+# or start fresh from the current moment?
+# This setting only affects the first time you run DRBOT.
+# If you turn this on, the first run of DRBOT might take a long time.
+first_time_retroactive_modlog = false
+
 
 # =======
 # Storage

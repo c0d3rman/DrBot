@@ -16,6 +16,10 @@ class ModlogAgent:
         self.data_store = {"_meta": {"version": "1.0", "last_processed": None}}
         self.handlers = {}
 
+        if not settings.first_time_retroactive_modlog:
+            # Use most recent mod action as the last processed
+            self.data_store["_meta"]["last_processed"] = next(reddit.subreddit(settings.subreddit).mod.log(limit=1)).id
+
     def register(self, handler: Handler, name: Optional[str] = None) -> None:
         if name is None:
             name = type(handler).__name__
