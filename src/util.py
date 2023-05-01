@@ -23,6 +23,15 @@ def init_reddit():
                              user_agent=f"DRBOT")
     reddit._core._retry_strategy_class = InfiniteRetryStrategy
     log.info(f"Logged in to Reddit as u/{reddit.user.me().name}")
+
+    try:
+        if not reddit.subreddit(settings.subreddit).user_is_moderator:
+            raise Exception(f"u/{reddit.user.me().name} is not a mod in r/{settings.subreddit}")
+    except prawcore.exceptions.Forbidden:
+        raise Exception(f"r/{settings.subreddit} is private or quarantined.")
+    except prawcore.exceptions.NotFound:
+        raise Exception(f"r/{settings.subreddit} is banned.")
+
     return reddit
 
 
