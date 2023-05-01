@@ -32,6 +32,11 @@ def main():
     # Modlog agent
     modlog_agent = ModlogAgent(reddit)
 
+    if settings.wiki_page != "":
+        # Load from wiki before registering anything to preserve dict references
+        wiki_store = WikiStore(modlog_agent)
+        schedule.every(10).minutes.do(wiki_store.save)
+
     points_handler = PointsHandler()
     modlog_agent.register(points_handler)
     modlog_agent.register(SelfModerationHandler())
@@ -39,9 +44,6 @@ def main():
 
     schedule.every(5).seconds.do(modlog_agent.run)
     schedule.every().hour.do(points_handler.scan_all)
-    if settings.wiki_page != "":
-        wiki_store = WikiStore(modlog_agent)
-        schedule.every(10).minutes.do(wiki_store.save)
 
     # Star User flair enforcement
     user_flair_agent = UserFlairAgent(reddit, restricted_phrase="⭐", permitted_css_class="staruser")
