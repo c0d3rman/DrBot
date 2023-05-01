@@ -1,5 +1,6 @@
 import re
 import praw
+from copy import deepcopy
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from .config import settings
@@ -23,13 +24,15 @@ class PointsHandler(Handler):
             removed = self.remove_violation(mod_action.target_author, mod_action.target_fullname, should_exist=False)
             if not removed is None:
                 log.info(f"-{removed['cost']} to u/{mod_action.target_author} from {mod_action.target_fullname} (re-approved), now at {self.get_user_total(mod_action.target_author)}.")
+        # If a user finishes a ban, henceforth ignore all violations from before that ban ended
+        elif mod_action.action == "unbanuser":
+            if mod_action.target_author in self.data_store and "record" in self.data_store[mod_action.target_author]:
+                self.data_store[mod_action.target_author]["record"]["cutoff"] = datetime.fromtimestamp(mod_action.created_utc)
 
     def add(self, mod_action):
-        """
-        Add points for a removal.
+        """Add points for a removal.
         Returns true if it was added and false if it wasn't (e.g. because it costs 0 points).
-        Triggers a ban if the addition causes the user goes over the threshold.
-        """
+        Triggers a ban if the addition causes the user goes over the threshold."""
         removal_reason_id = mod_action.description
         violation_fullname = mod_action.target_fullname
         username = mod_action.target_author
@@ -58,7 +61,7 @@ class PointsHandler(Handler):
             return False
 
         # Check if this submission is already accounted for
-        if username in self.data_store and violation_fullname in self.data_store[username]:
+        if username in self.data_store and violation_fullname in self.data_store[username]["violations"]:
             log.debug(f"{violation_fullname} already accounted for; skipping.")
             return False
 
@@ -83,21 +86,23 @@ class PointsHandler(Handler):
         # Calculate expiration
         expiration_duration = self.point_map.get_expiration(removal_reason_id)
         if not expiration_duration is None:
-            expiration = removal_time + relativedelta(months=self.point_map.get_expiration(removal_reason_id))
-            # Check if this submission has already expired (should almost never happen)
+            if violation is None:
+                violation = get_thing(self.reddit, mod_action.target_fullname)
+            expiration = datetime.fromtimestamp(violation.created_utc) + relativedelta(months=self.point_map.get_expiration(removal_reason_id))
+            # Check if this submission has already expired
             if datetime.now() >= expiration:
                 log.debug(f"{violation_fullname} already expired before it was added; skipping.")
                 return False
 
         # Add the submission to the user's record
         if not username in self.data_store:
-            self.data_store[username] = {}
-        elif violation_fullname in self.data_store[username]:
+            self.data_store[username] = {"violations": {}}
+        elif violation_fullname in self.data_store[username]["violations"]:
             log.warning(f"Can't add {violation_fullname} to u/{username} (already exists).")
             return False
-        self.data_store[username][violation_fullname] = {"cost": point_cost}
+        self.data_store[username]["violations"][violation_fullname] = {"cost": point_cost}
         if not expiration is None:
-            self.data_store[username][violation_fullname]["expires"] = expiration
+            self.data_store[username]["violations"][violation_fullname]["expires"] = expiration
         log.debug(f"Added {violation_fullname} to u/{username}.")
 
         new_total = self.get_user_total(username)
@@ -105,11 +110,13 @@ class PointsHandler(Handler):
 
         # Check whether this addition should trigger a ban
         if new_total >= settings.point_threshold:
-            self.ban(username, new_total)
+            self.act_on(username, new_total)
 
         return True
 
     def remove_user(self, username: str) -> bool:
+        """Wipe a user's record completely.
+        Used for wiping deleted accounts, mods, etc."""
         if not username in self.data_store:
             log.debug(f"Can't remove u/{username} (doesn't exist).")
             return False
@@ -124,16 +131,16 @@ class PointsHandler(Handler):
 
         if not username in self.data_store:
             if should_exist:
-                log.debug(f"Can't remove {violation_fullname} from u/{username} (user doesn't exist).")
+                log.warning(f"Can't remove {violation_fullname} from u/{username} (user doesn't exist).")
             return
-        if not violation_fullname in self.data_store[username]:
+        if not violation_fullname in self.data_store[username]["violations"]:
             if should_exist:
-                log.debug(f"Can't remove {violation_fullname} from u/{username} (violation doesn't exist).")
+                log.warning(f"Can't remove {violation_fullname} from u/{username} (violation doesn't exist).")
             return
-        removed = self.data_store[username][violation_fullname]
-        del self.data_store[username][violation_fullname]
+        removed = self.data_store[username]["violations"][violation_fullname]
+        del self.data_store[username]["violations"][violation_fullname]
         log.debug(f"Removed {violation_fullname} from u/{username}.")
-        if len(self.data_store[username]) == 0:
+        if len(self.data_store[username]["violations"]) == 0 and not "record" in self.data_store[username]:
             del self.data_store[username]
         return removed
 
@@ -141,14 +148,12 @@ class PointsHandler(Handler):
         """Get the total points from a user (0 by default if we have no data)."""
         if not username in self.data_store:
             return 0
-        return sum(v["cost"] for v in self.data_store[username].values())
+        return sum(v["cost"] for v in self.data_store[username]["violations"].values())
 
     def scan(self, username, check_mod=True):
-        """
-        Scan a user's record for expired or re-approved submissions (and remove them).
+        """Scan a user's record for expired or re-approved submissions (and remove them).
         Returns true if anything was removed and false otherwise.
-        Has an option not to check if the user's a mod because scan_all does it more efficiently as a batch.
-        """
+        Has an option not to check if the user's a mod because scan_all does it more efficiently as a batch."""
         log.debug(f"Scanning u/{username}.")
         change = False
 
@@ -168,7 +173,8 @@ class PointsHandler(Handler):
             log.info(f"u/{username} is a mod - expunging.")
             return self.remove_user(username)
 
-        for violation_fullname, violation_data in self.data_store[username].items():
+        violations = deepcopy(self.data_store[username]["violations"]) # Get a copy because we'll be modifying it during iteration
+        for violation_fullname, violation_data in violations.items():
             violation = get_thing(self.reddit, violation_fullname)
             reason = None
 
@@ -178,6 +184,9 @@ class PointsHandler(Handler):
             # Check for expiration
             elif "expires" in violation_data and datetime.now() >= violation_data["expires"]:
                 reason = "expired"
+            # Check for submissions before the cutoff (meaning they were already acted on)
+            elif "record" in self.data_store[username] and datetime.fromtimestamp(violation.created_utc) <= self.data_store[username]["record"]["cutoff"]:
+                reason = "already acted-on"
 
             if not reason is None:
                 if self.remove_violation(username, violation_fullname) is None:
@@ -190,10 +199,8 @@ class PointsHandler(Handler):
         return change
 
     def scan_all(self):
-        """
-        Scan the entire data store for expired or re-approved submissions.
-        Also cleans up mod entries if exclude_mods is on; this is done here so we can make a single request to get a list of mods instead of slowing down other operations with constant requests.
-        """
+        """Scan the entire data store for expired or re-approved submissions.
+        Also cleans up mod entries if exclude_mods is on; this is done here so we can make a single request to get a list of mods instead of slowing down other operations with constant requests."""
         users = set(self.data_store.keys())
 
         log.info(f"Starting full scan ({len(users)} users).")
@@ -208,42 +215,37 @@ class PointsHandler(Handler):
         for username in users:
             self.scan(username, check_mod=False)
 
-    def ban(self, username, total):
-        """
-        Act on a user hitting the threshold.
-        Either bans them or just sends modmail.
+    def act_on(self, username, total):
+        """Act on a user hitting the threshold.
+        Bans them and/or sends the mods a modmail warning, depending on your settings.
         Double-checks that all submissions are still removed and not past their expirations, and that the user isn't a mod if exclude_mods is on.
-        Returns true if the ban/modmail went through and false if it didn't.
-        """
+        Returns true if an action was taken or false if none was."""
 
         # Double check
         self.scan(username)
         if self.get_user_total(username) < settings.point_threshold:
             return False
 
-        # Don't act if if already banned
+        # Don't act if already banned
         if next(self.reddit.subreddit(settings.subreddit).banned(username), None) is not None:
             log.info(f"u/{username} is already banned; skipping action.")
             return False
 
-        # Handle autoban
-        if settings.autoban_mode in [2, 3]:
-            log.info(f"Banning u/{username} for reaching {total} points.")
-
-            if settings.dry_run:
-                log.info(f"[DRY RUN: would have banned the user.]")
-            else:
-                pass  # TBD
+        # Create permanent record
+        if not "record" in self.data_store[username]:
+            log.debug(f"Creating permanent record for u/{username}.")
+            self.data_store[username]["record"] = {"bans": []}
 
         # Handle modmail notification
         if settings.autoban_mode in [1, 2]:
-            didBan = settings.autoban_mode == 2
-
             log.info(f"Sending modmail about u/{username} for reaching {total} points.")
+
+            # Henceforth, ignore all violations from before this notification
+            self.data_store[username]["record"]["cutoff"] = datetime.now()
 
             # Prepare modmail message
             message = f"u/{username}'s violations have passed the {settings.point_threshold} point threshold:\n\n"
-            for fullname in self.data_store[username]:
+            for fullname in self.data_store[username]["violations"]:
                 violation = get_thing(self.reddit, fullname)
                 if fullname.startswith("t1_"):
                     kind = "comment"
@@ -251,16 +253,35 @@ class PointsHandler(Handler):
                 elif fullname.startswith("t3_"):
                     kind = "post"
                     text = violation.title
+                else:
+                    raise Exception(f"Unexpected object type for fullname {fullname}")
                 text = re.sub(r"\s*\n\s*", " ", text)  # Strip newlines
                 if settings.modmail_truncate_len > 0 and len(text) > settings.modmail_truncate_len:
                     text = text[:settings.modmail_truncate_len - 3] + "..."
                 date = datetime.fromtimestamp(violation.banned_at_utc).strftime("%m/%d/%y")
-                points = self.data_store[username][fullname]['cost']
+                points = self.data_store[username]["violations"][fullname]['cost']
                 message += f"- {date} {kind} ({points} point{'s' if points > 1 else ''}): [{text}]({violation.permalink}) ({violation.mod_reason_title})\n"
-            message += f"{'A' if didBan else 'No'} ban has been issued."
+            message += f"{'A' if settings.autoban_mode >= 2 else 'No'} ban has been issued."
 
             # Send modmail
-            send_modmail(self.reddit, subject=f"{'Ban' if didBan else 'Point'} alert for u/{username}",
+            send_modmail(self.reddit, subject=f"{'Ban' if settings.autoban_mode >= 2 else 'Point'} alert for u/{username}",
                          body=message)
+
+        # Handle autoban
+        if settings.autoban_mode in [2, 3]:
+            log.info(f"Banning u/{username} for {'TBD - duration'} for reaching {total} points.")
+
+            # TBD - calculate cutoff based on when ban ends (though technically they shouldn't be able to post during a ban)
+            # self.data_store[username]["record"]["cutoff"] = datetime.now() + ????
+
+            # TBD - add bans to record
+
+            if settings.dry_run:
+                log.info(f"[DRY RUN: would have banned u/{username} for {'TBD - duration'}.]")
+            else:
+                pass  # TBD
+
+        # Wipe out current violations since they've been acted on
+        self.data_store[username]["violations"] = {}
 
         return True

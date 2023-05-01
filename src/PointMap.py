@@ -13,7 +13,7 @@ class PointMap:
     def __init__(self, reddit):
         self.reddit = reddit
 
-        log.info("Loading removal reasons...")
+        log.info("Loading removal reasons.")
 
         # Check for dupes
         if len(settings.point_config) != len(set(x["id"] for x in settings.point_config)):
