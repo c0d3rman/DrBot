@@ -29,7 +29,8 @@ class UserFlairAgent:
                     log.info(f"[DRY RUN: would have reset flair for u/{flair['user'].name}]")
                 else:
                     self.reddit.subreddit(settings.subreddit).flair.delete(flair['user'].name)
-                send_modmail(self.reddit, subject="Your flair was illegal and has been reset",
+                send_modmail(self.reddit, recipient=flair['user'].name,
+                             subject="Your flair was illegal and has been reset",
                              body=f"""Hi u/{flair['user'].name}, your flair contained a star ⭐ which is only for [star users](https://www.reddit.com/r/DebateReligion/wiki/star_hall_of_fame/).
                              
 Your flair has been reset. If you are a star user and this was done in error, please respond to this message.""", add_common=False)

@@ -77,6 +77,10 @@ def send_modmail(reddit: praw.Reddit, subject: str, body: str, recipient: Option
         subject = "DRBOT: " + subject
         body += "\n\n(This is an automated message by [DRBOT](https://github.com/c0d3rman/DRBOT).)"
 
+    # Hide username by default in modmails to users
+    if not recipient is None and not 'author_hidden' in kwargs:
+        kwargs['author_hidden'] = True
+
     if settings.dry_run:
         log.info(f"""[DRY RUN: would have sent the following modmail:
 Subject: "{subject}"
