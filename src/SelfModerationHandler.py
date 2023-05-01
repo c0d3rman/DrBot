@@ -22,6 +22,8 @@ class SelfModerationHandler(Handler):
     def handle(self, mod_action):
         if mod_action.action == "removecomment":
             log.debug(f"Scanning {mod_action.id}.")
+            if mod_action._mod == "AutoModerator":
+                return
             if mod_action._mod == mod_action.target_author or self.is_self_moderated(mod_action._mod, mod_action.target_fullname):
                 log.warning(f"Self-moderation detected by u/{mod_action._mod} in {mod_action.target_fullname} on {datetime.fromtimestamp(mod_action.created_utc)}")
                 if settings.self_moderation_modmail:
