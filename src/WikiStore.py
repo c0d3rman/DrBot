@@ -31,7 +31,7 @@ class WikiStore:
         dump = f"// This page houses [DRBOT](https://github.com/c0d3rman/DRBOT)'s user records. **DO NOT EDIT!**\n\n{self.agent.to_json()}"
 
         if settings.dry_run:
-            log.info("(Skipping actual save because dry-run mode is active.)")
+            log.info("[DRY RUN: would have saved some data to the wiki.]")
             log.debug(f"Data that would be saved:\n\n{dump}")
             return
 
@@ -45,7 +45,7 @@ class WikiStore:
             data = self.agent.reddit.subreddit(settings.subreddit).wiki[WikiStore.DATA_PAGE].content_md
         except NotFound:
             if settings.dry_run:
-                log.info("Because dry-run mode is active, no wiki pages have been created, so no data was loaded from the wiki.")
+                log.info("[DRY RUN: because dry-run mode is active, no wiki pages have been created, so no data was loaded from the wiki.]")
                 return
             raise Exception("WikiStore couldn't load data because the necessary pages don't exist! Are you trying to manually call _load()?")
         data = re.sub(r"^//.*?\n", "", data)  # Remove comments
@@ -55,7 +55,7 @@ class WikiStore:
         log.info(f"Creating necessary wiki pages.")
 
         if settings.dry_run:
-            log.info("(Skipping actual page creation because dry-run mode is active.)")
+            log.info("[DRY RUN: would have created wiki pages.]")
             return
 
         self.agent.reddit.subreddit(settings.subreddit).wiki.create(

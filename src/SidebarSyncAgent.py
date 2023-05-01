@@ -22,7 +22,7 @@ class SidebarSyncAgent:
         log.debug(markdown)
 
         if settings.dry_run:
-            log.info("(Not actually changing sidebar because dry_run is on.)")
+            log.info(f"[DRY RUN: would have changed the old-reddit sidebar content to:\n\n{markdown}\n\n]")
         else:
             subreddit.wiki[SidebarSyncAgent.SIDEBAR_WIKI].edit(content=markdown, reason="Automated sidebar sync by DRBOT")
 
