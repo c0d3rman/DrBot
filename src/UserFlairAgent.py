@@ -8,7 +8,7 @@ class UserFlairAgent:
     """Allows you to set a restricted phrase that can only be used by certain users in their flair.
     Scans every single user who has ever assigned themselves flair in your sub,
     so this is not a good idea for bigger subs.
-    TBD: recommended alongside an automod rule"""
+    Recommended alongside an automod rule, which will instantly catch changed flair if the user makes a comment/post."""
 
     def __init__(self, reddit: praw.Reddit, restricted_phrase: str, permitted_css_class: Optional[str] = None):
         self.reddit = reddit

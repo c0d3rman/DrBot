@@ -61,7 +61,7 @@ settings = Dynaconf(
         Validator('console_log_level', 'file_log_level',
                   is_in=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"], messages={"operations": """{name} ({value}) in data/settings.toml must be one of the following:
 CRITICAL, ERROR, WARNING, INFO, DEBUG"""}),
-        Validator('dry_run', 'exclude_mods', 'safe_mode', 'custom_point_mod_notes',
+        Validator('dry_run', 'exclude_mods', 'safe_mode', 'custom_point_mod_notes', 'self_moderation_modmail', 'admin_modmail',
                   is_type_of=bool, messages={"operations": "{name} ({value}) in data/settings.toml must be one of: true, false"}),
     ]
 )

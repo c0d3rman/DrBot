@@ -1,5 +1,6 @@
 import praw
 import prawcore
+from typing import Optional
 from .config import settings
 from .log import log
 from .InfiniteRetryStrategy import InfiniteRetryStrategy
@@ -65,3 +66,29 @@ def get_thing(reddit, fullname):
         return reddit.submission(fullname[3:])  # PRAW requires us to chop off the "t3_"
     else:
         raise Exception(f"Unknown fullname type: {fullname}")
+
+
+def send_modmail(reddit: praw.Reddit, subject: str, body: str, recipient: Optional[praw.reddit.models.Redditor | str] = None, **kwargs):
+    """Sends modmail, handling dry_run mode.
+    Creates a moderator discussion by default if a recipient is not provided."""
+
+    # Add common elements
+    subject = "DRBOT: " + subject
+    body += "\n\n(This is an automated message by [DRBOT](https://github.com/c0d3rman/DRBOT).)"
+
+    if settings.dry_run:
+        log.info(f"""[DRY RUN: would have sent the following modmail:
+Subject: "{subject}"
+{body}
+]""")
+    else:
+        log.debug(f"""Sending modmail:
+Subject: "{subject}"
+{body}""")
+
+        if len(body) > 10000:
+            log.warning(f'Modlog "{subject}" over maximum length, truncating.')
+            trailer = "... [truncated]"
+            body = body[:10000 - len(trailer)] + trailer
+
+        reddit.subreddit(settings.subreddit).modmail.create(subject=subject, body=body, recipient=recipient, **kwargs)

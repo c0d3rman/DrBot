@@ -135,3 +135,9 @@ local_backup_file = "data/backup.json"
 # When modmailing you, truncate long comments to this many characters (or set to 0 to disable truncation).
 # Warning: if you set this too high, the message may go over the character limit.
 modmail_truncate_len = 100
+
+# Whether to send modmail when self-moderation is detected (otherwise it's just logged).
+self_moderation_modmail = false
+
+# Whether to send modmail when admin action is detected (otherwise it's just logged).
+admin_modmail = true

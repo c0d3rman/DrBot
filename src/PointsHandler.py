@@ -4,7 +4,7 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from .config import settings
 from .log import log
-from .util import user_exists, get_thing
+from .util import user_exists, get_thing, send_modmail
 from .Handler import Handler
 from .PointMap import PointMap
 
@@ -257,15 +257,10 @@ class PointsHandler(Handler):
                 date = datetime.fromtimestamp(violation.banned_at_utc).strftime("%m/%d/%y")
                 points = self.data_store[username][fullname]['cost']
                 message += f"- {date} {kind} ({points} point{'s' if points > 1 else ''}): [{text}]({violation.permalink}) ({violation.mod_reason_title})\n"
-            message += f"\n(This is an automated message by [DRBOT](https://github.com/c0d3rman/DRBOT), {'a' if didBan else 'no'} ban has been issued.)"
+            message += f"{'A' if didBan else 'No'} ban has been issued."
 
             # Send modmail
-            if settings.dry_run:
-                log.info(f"[DRY RUN: would have sent this modmail:\n\n{message}\n\n]")
-            else:
-                self.reddit.subreddit(settings.subreddit).modmail.create(
-                    subject=f"DRBOT: {'ban' if didBan else 'point'} alert for u/{username}",
-                    body=message,
-                    recipient=None)  # None makes it create a moderator discussion
+            send_modmail(self.reddit, subject=f"{'Ban' if didBan else 'Point'} alert for u/{username}",
+                         body=message)
 
         return True
