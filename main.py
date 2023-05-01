@@ -14,6 +14,7 @@ from src.util import init_reddit
 from src.ModlogAgent import ModlogAgent
 from src.SidebarSyncAgent import SidebarSyncAgent
 from src.UserFlairAgent import UserFlairAgent
+from src.AdminHandler import AdminHandler
 from src.WikiStore import WikiStore
 from src.PointsHandler import PointsHandler
 from src.SelfModerationHandler import SelfModerationHandler
@@ -32,10 +33,9 @@ def main():
     modlog_agent = ModlogAgent(reddit)
 
     points_handler = PointsHandler()
-    modlog_agent.register("PointsHandler", points_handler)
-
-    self_moderation_handler = SelfModerationHandler()
-    modlog_agent.register("SelfModerationHandler", self_moderation_handler)
+    modlog_agent.register(points_handler)
+    modlog_agent.register(SelfModerationHandler())
+    modlog_agent.register(AdminHandler())
 
     schedule.every(5).seconds.do(modlog_agent.run)
     schedule.every().hour.do(points_handler.scan_all)

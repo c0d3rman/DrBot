@@ -1,4 +1,5 @@
 import datetime
+from typing import Optional
 import json
 from .config import settings
 from .log import log
@@ -15,7 +16,9 @@ class ModlogAgent:
         self.data_store = {"_meta": {"version": "1.0", "last_processed": None}}
         self.handlers = {}
 
-    def register(self, name: str, handler: Handler) -> None:
+    def register(self, handler: Handler, name: Optional[str] = None) -> None:
+        if name is None:
+            name = type(handler).__name__
         if name == "_meta":
             log.error(f"Illegal handler name - cannot be _meta. Ignoring.")
             return
