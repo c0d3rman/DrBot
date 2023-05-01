@@ -68,13 +68,14 @@ def get_thing(reddit, fullname):
         raise Exception(f"Unknown fullname type: {fullname}")
 
 
-def send_modmail(reddit: praw.Reddit, subject: str, body: str, recipient: Optional[praw.reddit.models.Redditor | str] = None, **kwargs):
+def send_modmail(reddit: praw.Reddit, subject: str, body: str, recipient: Optional[praw.reddit.models.Redditor | str] = None, add_common: bool = True, **kwargs):
     """Sends modmail, handling dry_run mode.
     Creates a moderator discussion by default if a recipient is not provided."""
 
     # Add common elements
-    subject = "DRBOT: " + subject
-    body += "\n\n(This is an automated message by [DRBOT](https://github.com/c0d3rman/DRBOT).)"
+    if add_common:
+        subject = "DRBOT: " + subject
+        body += "\n\n(This is an automated message by [DRBOT](https://github.com/c0d3rman/DRBOT).)"
 
     if settings.dry_run:
         log.info(f"""[DRY RUN: would have sent the following modmail:
