@@ -20,17 +20,24 @@ class SelfModerationHandler(Handler):
         self.cache = {}
 
     def handle(self, mod_action):
+        self_moderation = False
         if mod_action.action == "removecomment":
             log.debug(f"Scanning {mod_action.id}.")
             if mod_action._mod == "AutoModerator":
                 return
-            if mod_action._mod == mod_action.target_author or self.is_self_moderated(mod_action._mod, mod_action.target_fullname):
-                log.warning(f"Self-moderation detected by u/{mod_action._mod} in {mod_action.target_fullname} on {datetime.fromtimestamp(mod_action.created_utc)}")
-                if settings.self_moderation_modmail:
-                    send_modmail(self.reddit, subject=f"Self-moderation by u/{mod_action._mod}",
-                                 body=f"On {datetime.fromtimestamp(mod_action.created_utc)}, u/{mod_action._mod} took action {mod_action.action} on [this submission](https://reddit.com{mod_action.target_permalink}) despite being involved upstream of it.")
+            if self.is_self_moderated(mod_action._mod, mod_action.target_fullname):
+                self_moderation = True
+        elif mod_action.action in ["approvecomment", "approvelink"]:
+            if mod_action._mod == mod_action.target_author:
+                self_moderation = True
 
-    def is_self_moderated(self, mod: str, fullname: str):
+        if self_moderation:
+            log.warning(f"Self-moderation detected by u/{mod_action._mod} in {mod_action.target_fullname} on {datetime.fromtimestamp(mod_action.created_utc)}")
+            if settings.self_moderation_modmail:
+                send_modmail(self.reddit, subject=f"Self-moderation by u/{mod_action._mod}",
+                             body=f"On {datetime.fromtimestamp(mod_action.created_utc)}, u/{mod_action._mod} {'removed' if mod_action.action == 'removecomment' else 'approved'} [this {'comment' if mod_action.target_fullname.startswith('t1_') else 'post'}](https://reddit.com{mod_action.target_permalink}) despite being involved upstream of it.")
+
+    def is_self_moderated(self, mod: str, fullname: str, skip_first: bool = True):
         """Scans a given object and its parents for any instances of the given mod as an author."""
 
         if fullname in self.cache:
