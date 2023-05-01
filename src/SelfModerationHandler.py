@@ -13,7 +13,6 @@ class SelfModerationHandler(Handler):
 
     def init(self, data_store: dict, reddit: praw.Reddit):
         super().init(data_store, reddit)
-        self.point_map = PointMap(reddit)
         self.cache = {}
 
     def start_run(self):
@@ -25,9 +24,9 @@ class SelfModerationHandler(Handler):
             log.debug(f"Scanning {mod_action.id}.")
             if mod_action._mod == mod_action.target_author or self.is_self_moderated(mod_action._mod, mod_action.target_fullname):
                 log.warning(f"Self-moderation detected by u/{mod_action._mod} in {mod_action.target_fullname} on {datetime.fromtimestamp(mod_action.created_utc)}")
-
-                send_modmail(self.reddit, subject=f"Self-moderation by u/{mod_action._mod}",
-                             body=f"On {datetime.fromtimestamp(mod_action.created_utc)}, u/{mod_action._mod} took action {mod_action.action} on [this submission](https://reddit.com{mod_action.permalink}) despite being involved upstream of it.")
+                if settings.self_moderation_modmail:
+                    send_modmail(self.reddit, subject=f"Self-moderation by u/{mod_action._mod}",
+                                 body=f"On {datetime.fromtimestamp(mod_action.created_utc)}, u/{mod_action._mod} took action {mod_action.action} on [this submission](https://reddit.com{mod_action.target_permalink}) despite being involved upstream of it.")
 
     def is_self_moderated(self, mod: str, fullname: str):
         """Scans a given object and its parents for any instances of the given mod as an author."""
