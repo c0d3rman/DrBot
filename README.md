@@ -3,9 +3,13 @@
 
 DRBOT (Do Really Boring Overhead Tasks) is a reddit bot that automatically monitors a subreddit and tracks removals. Each removal of a user's submission gives that user a certain number of points, and once their points hit some threshold, the bot takes action, either by notifying the mods or automatically banning the user.
 
-## Installation
+## Setup
 
-TBD
+1. Clone this repo and cd inside.
+2. `pip install -r requirements.txt`
+3. Run first-time setup: `python first_time_setup.py`. This will also create a settings file for you.
+4. Change any other settings you want in `data/settings.toml`.
+5. Run the bot: `python main.py`
 
 ## Caveats
 
