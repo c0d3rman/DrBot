@@ -173,7 +173,7 @@ class PointsHandler(Handler):
             log.info(f"u/{username} is a mod - expunging.")
             return self.remove_user(username)
 
-        violations = deepcopy(self.data_store[username]["violations"]) # Get a copy because we'll be modifying it during iteration
+        violations = deepcopy(self.data_store[username]["violations"])  # Get a copy because we'll be modifying it during iteration
         for violation_fullname, violation_data in violations.items():
             violation = get_thing(self.reddit, violation_fullname)
             reason = None
