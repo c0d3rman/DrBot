@@ -1,39 +1,42 @@
+from __future__ import annotations
 import praw
+from praw.models import ModAction, Comment
 from datetime import datetime
 from drbot import settings, log
 from drbot.util import get_thing, send_modmail
+from drbot.agents import Agent
 from drbot.handlers import Handler
 
 
-class SelfModerationHandler(Handler):
+class SelfModerationHandler(Handler[ModAction]):
     """Scans the modlog for instances of moderators moderating their own comments,
     comments on their posts, or comments in the reply tree below their own comments."""
 
-    def init(self, data_store: dict, reddit: praw.Reddit):
-        super().init(data_store, reddit)
+    def setup(self, agent: Agent[ModAction]) -> None:
+        super().setup(agent)
         self.cache = {}
 
-    def start_run(self):
+    def start_run(self) -> None:
         log.debug("Invalidating cache.")
         self.cache = {}
 
-    def handle(self, mod_action):
+    def handle(self, item: ModAction) -> None:
         self_moderation = False
-        if mod_action.action == "removecomment":
-            log.debug(f"Scanning {mod_action.id}.")
-            if mod_action._mod == "AutoModerator":
+        if item.action == "removecomment":
+            log.debug(f"Scanning {item.id}.")
+            if item._mod == "AutoModerator":
                 return
-            if self.is_self_moderated(mod_action._mod, mod_action.target_fullname):
+            if self.is_self_moderated(item._mod, item.target_fullname):
                 self_moderation = True
-        elif mod_action.action in ["approvecomment", "approvelink"]:
-            if mod_action._mod == mod_action.target_author:
+        elif item.action in ["approvecomment", "approvelink"]:
+            if item._mod == item.target_author:
                 self_moderation = True
 
         if self_moderation:
-            log.warning(f"Self-moderation detected by u/{mod_action._mod} in {mod_action.target_fullname} on {datetime.fromtimestamp(mod_action.created_utc)}")
+            log.warning(f"Self-moderation detected by u/{item._mod} in {item.target_fullname} on {datetime.fromtimestamp(item.created_utc)}")
             if settings.self_moderation_modmail:
-                send_modmail(self.reddit, subject=f"Self-moderation by u/{mod_action._mod}",
-                             body=f"On {datetime.fromtimestamp(mod_action.created_utc)}, u/{mod_action._mod} {'removed' if mod_action.action == 'removecomment' else 'approved'} [this {'comment' if mod_action.target_fullname.startswith('t1_') else 'post'}](https://reddit.com{mod_action.target_permalink}) despite being involved upstream of it.")
+                send_modmail(self.reddit, subject=f"Self-moderation by u/{item._mod}",
+                             body=f"On {datetime.fromtimestamp(item.created_utc)}, u/{item._mod} {'removed' if item.action == 'removecomment' else 'approved'} [this {'comment' if item.target_fullname.startswith('t1_') else 'post'}](https://reddit.com{item.target_permalink}) despite being involved upstream of it.")
 
     def is_self_moderated(self, mod: str, fullname: str, skip_first: bool = True):
         """Scans a given object and its parents for any instances of the given mod as an author."""
@@ -46,7 +49,7 @@ class SelfModerationHandler(Handler):
             ancestor = get_thing(self.reddit, fullname)
             # Check the comment and all its ancestors (if it's a comment)
             refresh_counter = 0
-            while type(ancestor) is praw.reddit.models.Comment:
+            while type(ancestor) is Comment:
                 if ancestor.author == mod:
                     return True
                 if refresh_counter % 9 == 0:  # This refresh mechanism is for minimizing requests, see https://praw.readthedocs.io/en/latest/code_overview/models/comment.html#praw.models.Comment.parent

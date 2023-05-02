@@ -10,8 +10,8 @@ import os.path
 
 
 SETTINGS_PATH = "data/settings.toml"
-DEFAULT_SETTINGS_PATH = "src/default_settings.toml"
-DRBOT_CLIENT_ID_PATH = "src/drbot_client_id.txt"
+DEFAULT_SETTINGS_PATH = "drbot/default_settings.toml"
+DRBOT_CLIENT_ID_PATH = "drbot/drbot_client_id.txt"
 
 
 def reddit_login():

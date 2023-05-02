@@ -1,14 +1,12 @@
 import praw
 import prawcore
 from typing import Optional
-from drbot import settings, log
+from drbot import settings, log, InfiniteRetryStrategy  # Import has to happen here for some reason
 
 DRBOT_CLIENT_ID_PATH = "drbot/drbot_client_id.txt"
 
 
-def init_reddit():
-    from drbot import InfiniteRetryStrategy  # Import has to happen here for some reason
-
+def init_reddit() -> praw.Reddit:
     if settings.refresh_token != "":
         with open(DRBOT_CLIENT_ID_PATH, "r") as f:
             drbot_client_id = f.read()
@@ -36,7 +34,7 @@ def init_reddit():
     return reddit
 
 
-def get_dupes(L):
+def get_dupes(L: list) -> set:
     """
     Given a list, get a set of all elements which appear more than once.
     """
@@ -46,7 +44,7 @@ def get_dupes(L):
     return seen2
 
 
-def user_exists(reddit, username):
+def user_exists(reddit: praw.Reddit, username: str) -> bool:
     """Check if a user exists on reddit."""
     try:
         reddit.redditor(username).fullname
@@ -58,7 +56,7 @@ def user_exists(reddit, username):
         return True
 
 
-def get_thing(reddit, fullname):
+def get_thing(reddit: praw.Reddit, fullname: str) -> praw.reddit.models.Comment | praw.reddit.models.Submission:
     """For getting a comment or submission from a fullname when you don't know which one it is."""
     if fullname.startswith("t1_"):
         return reddit.comment(fullname)
@@ -68,7 +66,7 @@ def get_thing(reddit, fullname):
         raise Exception(f"Unknown fullname type: {fullname}")
 
 
-def send_modmail(reddit: praw.Reddit, subject: str, body: str, recipient: Optional[praw.reddit.models.Redditor | str] = None, add_common: bool = True, **kwargs):
+def send_modmail(reddit: praw.Reddit, subject: str, body: str, recipient: Optional[praw.reddit.models.Redditor | str] = None, add_common: bool = True, **kwargs) -> None:
     """Sends modmail, handling dry_run mode.
     Creates a moderator discussion by default if a recipient is not provided."""
 
@@ -97,3 +95,10 @@ Subject: "{subject}"
             body = body[:10000 - len(trailer)] + trailer
 
         reddit.subreddit(settings.subreddit).modmail.create(subject=subject, body=body, recipient=recipient, **kwargs)
+
+
+def is_mod(reddit: praw.Reddit, username: str | praw.reddit.models.Redditor) -> bool:
+    """Check if a user is a mod in your sub"""
+    if isinstance(username, praw.reddit.models.Redditor):
+        username = username.name
+    return len(reddit.subreddit(settings.subreddit).moderator(username)) > 0

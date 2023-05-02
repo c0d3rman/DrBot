@@ -1,23 +1,36 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
-import praw
-from drbot import log
+from typing import Generic, TypeVar, Optional
+from drbot.agents import Agent
 
 
-class Handler(ABC):
-    """For use with ModlogAgent.
-    Scans incoming modlog entries one at a time."""
+T = TypeVar("T")
 
-    def init(self, data_store: dict, reddit: praw.Reddit):
+
+class Handler(ABC, Generic[T]):
+    """For use with Agents.
+    Scans incoming items entries one at a time."""
+
+    def __init__(self, name: Optional[str] = None):
+        if name is None:  # By default, the name is just the class name
+            name = self.__class__.__name__
+        self.name = name
+
+    @property
+    def data_store(self):
+        return self.agent.get_data_store(self)
+
+    def setup(self, agent: Agent[T]) -> None:
         """Called to set up the handler when it is registered."""
-        self.data_store = data_store
-        self.reddit = reddit
+        self.agent = agent
+        self.reddit = agent.reddit
 
-    def start_run(self):
-        """Called by ModlogAgent when it starts looping through a new batch of mod log items.
+    def start_run(self) -> None:
+        """Called by the agent when it starts looping through a new batch.
         Can optionally be overriden to do things like invalidating caches."""
         pass
 
     @abstractmethod
-    def handle(self, mod_action: praw.models.ModAction) -> None:
-        """The core handler method. Handle a single mod action."""
+    def handle(self, item: T) -> None:
+        """The core handler method. Handle a single item."""
         pass

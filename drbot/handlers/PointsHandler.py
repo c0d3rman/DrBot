@@ -1,31 +1,34 @@
+from __future__ import annotations
 import re
-import praw
+from praw.models import ModAction
 from copy import deepcopy
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from drbot import settings, log, PointMap
-from drbot.util import user_exists, get_thing, send_modmail
+from drbot import settings, log
+from drbot.util import user_exists, get_thing, send_modmail, is_mod
+from drbot.stores import PointMap
+from drbot.agents import Agent
 from drbot.handlers import Handler
 
 
-class PointsHandler(Handler):
-    def init(self, data_store: dict, reddit: praw.Reddit):
-        super().init(data_store, reddit)
-        self.point_map = PointMap(reddit)
+class PointsHandler(Handler[ModAction]):
+    def setup(self, agent: Agent[ModAction]) -> None:
+        super().setup(agent)
+        self.point_map = PointMap(self.reddit)
 
-    def handle(self, mod_action):
+    def handle(self, item: ModAction) -> None:
         # If a removal reason is added, add the violation to the user's record
-        if mod_action.action == "addremovalreason":
-            self.add(mod_action)
+        if item.action == "addremovalreason":
+            self.add(item)
         # If a comment has been re-approved, remove it from the record
-        elif mod_action.action == "approvecomment":
-            removed = self.remove_violation(mod_action.target_author, mod_action.target_fullname, should_exist=False)
+        elif item.action == "approvecomment":
+            removed = self.remove_violation(item.target_author, item.target_fullname, should_exist=False)
             if not removed is None:
-                log.info(f"-{removed['cost']} to u/{mod_action.target_author} from {mod_action.target_fullname} (re-approved), now at {self.get_user_total(mod_action.target_author)}.")
+                log.info(f"-{removed['cost']} to u/{item.target_author} from {item.target_fullname} (re-approved), now at {self.get_user_total(item.target_author)}.")
         # If a user finishes a ban, henceforth ignore all violations from before that ban ended
-        elif mod_action.action == "unbanuser":
-            if mod_action.target_author in self.data_store and "record" in self.data_store[mod_action.target_author]:
-                self.data_store[mod_action.target_author]["record"]["cutoff"] = datetime.fromtimestamp(mod_action.created_utc)
+        elif item.action == "unbanuser":
+            if item.target_author in self.data_store and "record" in self.data_store[item.target_author]:
+                self.data_store[item.target_author]["record"]["cutoff"] = datetime.fromtimestamp(item.created_utc)
 
     def add(self, mod_action):
         """Add points for a removal.
@@ -71,7 +74,7 @@ class PointsHandler(Handler):
                 return False
 
             # If exclude_mods is on, check if the user is a mod
-            if settings.exclude_mods and len(self.reddit.subreddit(settings.subreddit).moderator(username)) > 0:
+            if settings.exclude_mods and is_mod(self.reddit, username):
                 log.debug(f"u/{username} is a mod; skipping.")
                 return False
 
@@ -167,7 +170,7 @@ class PointsHandler(Handler):
             log.info(f"u/{username}'s account doesn't exist anymore - expunging.")
             return self.remove_user(username)
         # Exclude mods if requested
-        if check_mod and settings.exclude_mods and len(self.reddit.subreddit(settings.subreddit).moderator(username)) > 0:
+        if check_mod and settings.exclude_mods and is_mod(self.reddit, username):
             log.info(f"u/{username} is a mod - expunging.")
             return self.remove_user(username)
 

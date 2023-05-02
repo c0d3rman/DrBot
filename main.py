@@ -8,9 +8,10 @@ Free to use by anyone for any reason (licensed under CC0)
 import logging
 import schedule
 import time
-from drbot import settings, log, WikiStore
-from drbot.agents import ModlogAgent, SidebarSyncAgent, UserFlairAgent
-from drbot.handlers import PointsHandler, AdminHandler, SelfModerationHandler
+from drbot import settings, log
+from drbot.stores import *
+from drbot.agents import *
+from drbot.handlers import *
 from drbot.util import init_reddit
 
 
@@ -18,26 +19,25 @@ def main():
     log.info(f"DRBOT for r/{settings.subreddit} starting up")
 
     reddit = init_reddit()
+    data_store = DataStore()
 
-    # Sidebar sync
-    sidebar_sync_agent = SidebarSyncAgent(reddit)
-    schedule.every(1).day.do(sidebar_sync_agent.run)
-
-    # Modlog agent
-    modlog_agent = ModlogAgent(reddit)
-
+    # Load from wiki before creating any agents to avoid conflicts
     if settings.wiki_page != "":
-        # Load from wiki before registering anything to preserve dict references
-        wiki_store = WikiStore(modlog_agent)
+        wiki_store = WikiStore(reddit, data_store)
         schedule.every(10).minutes.do(wiki_store.save)
 
+    # # Modlog agent
+    modlog_agent = ModlogAgent(reddit, data_store)
     points_handler = PointsHandler()
     modlog_agent.register(points_handler)
     modlog_agent.register(SelfModerationHandler())
     modlog_agent.register(AdminHandler())
-
     schedule.every(5).seconds.do(modlog_agent.run)
     schedule.every().hour.do(points_handler.scan_all)
+
+    # Sidebar sync
+    sidebar_sync_agent = SidebarSyncAgent(reddit)
+    schedule.every(1).hour.do(sidebar_sync_agent.run)
 
     # Star User flair enforcement
     user_flair_agent = UserFlairAgent(reddit, restricted_phrase="⭐", permitted_css_class="staruser")

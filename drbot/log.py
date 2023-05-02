@@ -18,8 +18,7 @@ class LogFormatter(logging.Formatter):
     }
 
     def __init__(self, fmt="[%(asctime)s] [%(threadName)s] %(levelname)-8s | %(message)s", *args, **kwargs):
-        super(LogFormatter, self).__init__(
-            fmt=f"%(color_on)s{fmt}%(color_off)s", *args, **kwargs)
+        super().__init__(fmt=f"%(color_on)s{fmt}%(color_off)s", *args, **kwargs)
 
     RESET_CODE = "\033[0m"
 
