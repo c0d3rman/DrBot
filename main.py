@@ -8,16 +8,10 @@ Free to use by anyone for any reason (licensed under CC0)
 import logging
 import schedule
 import time
-from src.config import settings
-from src.log import log
-from src.util import init_reddit
-from src.ModlogAgent import ModlogAgent
-from src.SidebarSyncAgent import SidebarSyncAgent
-from src.UserFlairAgent import UserFlairAgent
-from src.AdminHandler import AdminHandler
-from src.WikiStore import WikiStore
-from src.PointsHandler import PointsHandler
-from src.SelfModerationHandler import SelfModerationHandler
+from drbot import settings, log, WikiStore
+from drbot.agents import ModlogAgent, SidebarSyncAgent, UserFlairAgent
+from drbot.handlers import PointsHandler, AdminHandler, SelfModerationHandler
+from drbot.util import init_reddit
 
 
 def main():

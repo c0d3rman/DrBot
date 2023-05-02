@@ -1,7 +1,6 @@
 import json
-from .config import settings
-from .log import log
-from .util import get_dupes
+from drbot import settings, log
+from drbot.util import get_dupes
 
 
 class PointMap:

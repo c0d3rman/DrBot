@@ -1,7 +1,6 @@
 import re
 from prawcore.exceptions import NotFound
-from .log import log
-from .config import settings
+from drbot import settings, log
 
 
 class WikiStore:

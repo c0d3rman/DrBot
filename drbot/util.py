@@ -1,14 +1,14 @@
 import praw
 import prawcore
 from typing import Optional
-from .config import settings
-from .log import log
-from .InfiniteRetryStrategy import InfiniteRetryStrategy
+from drbot import settings, log
 
-DRBOT_CLIENT_ID_PATH = "src/drbot_client_id.txt"
+DRBOT_CLIENT_ID_PATH = "drbot/drbot_client_id.txt"
 
 
 def init_reddit():
+    from drbot import InfiniteRetryStrategy  # Import has to happen here for some reason
+
     if settings.refresh_token != "":
         with open(DRBOT_CLIENT_ID_PATH, "r") as f:
             drbot_client_id = f.read()

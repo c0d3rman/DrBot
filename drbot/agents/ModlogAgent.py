@@ -1,9 +1,8 @@
 import datetime
 from typing import Optional
 import json
-from .config import settings
-from .log import log
-from .Handler import Handler
+from drbot import settings, log
+from drbot.handlers import Handler
 
 
 class ModlogAgent:
@@ -34,7 +33,7 @@ class ModlogAgent:
 
     def run(self) -> None:
         # Gather new modlog entries
-        entries = list(self.reddit.subreddit(settings.subreddit).mod.log(limit=None, params={"before": self.data_store["_meta"]["last_processed"]}))  # Yes really, it's 'before' not 'after' - reddit convention has the top of the list being the 'first'
+        entries = list(self.reddit.subreddit(settings.subreddit).mod.log(limit=1000, params={"before": self.data_store["_meta"]["last_processed"]}))  # Yes really, it's 'before' not 'after' - reddit convention has the top of the list being the 'first'
         if len(entries) == 0:
             return
         log.info(f"Processing {len(entries)} new modlog entries.")

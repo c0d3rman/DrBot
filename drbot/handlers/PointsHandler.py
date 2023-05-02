@@ -3,11 +3,9 @@ import praw
 from copy import deepcopy
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from .config import settings
-from .log import log
-from .util import user_exists, get_thing, send_modmail
-from .Handler import Handler
-from .PointMap import PointMap
+from drbot import settings, log, PointMap
+from drbot.util import user_exists, get_thing, send_modmail
+from drbot.handlers import Handler
 
 
 class PointsHandler(Handler):

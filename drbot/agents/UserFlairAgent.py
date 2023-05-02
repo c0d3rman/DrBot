@@ -1,8 +1,7 @@
 import praw
 from typing import Optional
-from .config import settings
-from .log import log
-from .util import send_modmail
+from drbot import settings, log
+from drbot.util import send_modmail
 
 
 class UserFlairAgent:

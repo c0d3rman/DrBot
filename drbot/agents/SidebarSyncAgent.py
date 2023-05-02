@@ -1,6 +1,5 @@
 from praw.models.reddit import widgets
-from .config import settings
-from .log import log
+from drbot import settings, log
 
 
 class SidebarSyncAgent:

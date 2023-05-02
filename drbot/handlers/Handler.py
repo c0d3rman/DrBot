@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import praw
-from .log import log
+from drbot import log
 
 
 class Handler(ABC):

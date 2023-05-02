@@ -1,10 +1,8 @@
 import praw
 from datetime import datetime
-from .config import settings
-from .log import log
-from .util import get_thing, send_modmail
-from .Handler import Handler
-from .PointMap import PointMap
+from drbot import settings, log
+from drbot.util import get_thing, send_modmail
+from drbot.handlers import Handler
 
 
 class SelfModerationHandler(Handler):

@@ -2,10 +2,9 @@ import re
 from datetime import datetime
 import urllib.request
 import json
-from .config import settings
-from .log import log
-from .util import send_modmail
-from .Handler import Handler
+from drbot import settings, log
+from drbot.util import send_modmail
+from drbot.handlers import Handler
 
 
 class AdminHandler(Handler):

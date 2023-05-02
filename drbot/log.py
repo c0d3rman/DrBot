@@ -1,5 +1,5 @@
 import logging
-from .config import settings
+from drbot import settings
 
 BASE_FORMAT = "[%(asctime)s] [%(filename)s/%(funcName)s:%(lineno)d] %(levelname)s | %(message)s"
 
