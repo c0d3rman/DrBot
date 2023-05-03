@@ -102,3 +102,11 @@ def is_mod(reddit: praw.Reddit, username: str | praw.reddit.models.Redditor) -> 
     if isinstance(username, praw.reddit.models.Redditor):
         username = username.name
     return len(reddit.subreddit(settings.subreddit).moderator(username)) > 0
+
+
+def page_exists(reddit: praw.Reddit, page: str) -> bool:
+    try:
+        reddit.subreddit(settings.subreddit).wiki[page].may_revise
+        return True
+    except prawcore.exceptions.NotFound:
+        return False

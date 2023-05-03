@@ -1,5 +1,6 @@
 from praw.models.reddit import widgets
 from drbot import settings, log
+from drbot.util import page_exists
 
 
 class SidebarSyncAgent:
@@ -8,6 +9,16 @@ class SidebarSyncAgent:
 
     def __init__(self, reddit):
         self.reddit = reddit
+
+        # Some subs don't have an old-reddit sidebar wiki page
+        if not page_exists(self.reddit, SidebarSyncAgent.SIDEBAR_WIKI):
+            if settings.dry_run:
+                log.info(f"[DRY RUN: would have created the {SidebarSyncAgent.SIDEBAR_WIKI} wiki page.]")
+            else:
+                self.reddit.subreddit(settings.subreddit).wiki.create(
+                    name=SidebarSyncAgent.SIDEBAR_WIKI,
+                    content="",
+                    reason="Automated page for DRBOT")
 
     def run(self) -> None:
         subreddit = self.reddit.subreddit(settings.subreddit)
@@ -19,6 +30,10 @@ class SidebarSyncAgent:
 
         log.info("Detected sidebar change - syncing new reddit to old reddit.")
         log.debug(markdown)
+
+        if len(markdown) > 10240:  # Check if we're past the maximum size of the sidebar
+            log.error(f"Sidebar is too long to be synced to old reddit! ({len(markdown)}/10240 characters.) Check log for full markdown.")
+            return
 
         if settings.dry_run:
             log.info(f"[DRY RUN: would have changed the old-reddit sidebar content to:\n\n{markdown}\n\n]")
