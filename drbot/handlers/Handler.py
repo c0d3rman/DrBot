@@ -23,7 +23,6 @@ class Handler(ABC, Generic[T]):
     def setup(self, agent: Agent[T]) -> None:
         """Called to set up the handler when it is registered."""
         self.agent = agent
-        self.reddit = agent.reddit
 
     def start_run(self) -> None:
         """Called by the agent when it starts looping through a new batch.

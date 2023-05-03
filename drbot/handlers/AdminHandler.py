@@ -4,8 +4,7 @@ from datetime import datetime
 import urllib.request
 import json
 from praw.models import ModAction
-from drbot import settings, log
-from drbot.util import send_modmail
+from drbot import settings, log, reddit
 from drbot.handlers import Handler
 
 
@@ -23,8 +22,8 @@ class AdminHandler(Handler[ModAction]):
             else:
                 # Strange action, send a simple modmail and return
                 if settings.admin_modmail:
-                    send_modmail(self.reddit, subject=f'Admins took action "{item.action}" in your sub',
-                                 body=f"Reddit's Anti-Evil Operations took action {item.action} in your sub. See DRBOT's log for more details.")
+                    reddit.send_modmail(subject=f'Admins took action "{item.action}" in your sub',
+                                        body=f"Reddit's Anti-Evil Operations took action {item.action} in your sub. See DRBOT's log for more details.")
                 log.info(f"Full info for unknown action type:\n{vars(item)}")
                 return
 
@@ -46,4 +45,4 @@ class AdminHandler(Handler[ModAction]):
                         message += f">**{data['title']}**\n>\n"
                     message += re.sub(r"^", ">", data['body' if kind == 'comment' else 'selftext'], flags=re.MULTILINE)
 
-                send_modmail(self.reddit, subject=f"Admins removed a {kind} in your sub", body=message)
+                reddit.send_modmail(subject=f"Admins removed a {kind} in your sub", body=message)

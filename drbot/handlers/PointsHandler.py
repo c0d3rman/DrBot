@@ -4,8 +4,7 @@ from praw.models import ModAction
 from copy import deepcopy
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from drbot import settings, log
-from drbot.util import user_exists, get_thing, send_modmail, is_mod
+from drbot import settings, log, reddit
 from drbot.stores import PointMap
 from drbot.agents import Agent
 from drbot.handlers import Handler
@@ -14,7 +13,7 @@ from drbot.handlers import Handler
 class PointsHandler(Handler[ModAction]):
     def setup(self, agent: Agent[ModAction]) -> None:
         super().setup(agent)
-        self.point_map = PointMap(self.reddit)
+        self.point_map = PointMap()
 
     def handle(self, item: ModAction) -> None:
         # If a removal reason is added, add the violation to the user's record
@@ -51,7 +50,7 @@ class PointsHandler(Handler[ModAction]):
         point_cost = self.point_map[removal_reason_id]
         if settings.custom_point_mod_notes:  # Check for manual point exception in mod note
             if violation is None:
-                violation = get_thing(self.reddit, mod_action.target_fullname)
+                violation = reddit.get_thing(mod_action.target_fullname)
             if not violation.mod_note is None:
                 result = re.search(r"\[(\d+)\]", violation.mod_note)
                 if not result is None:
@@ -69,18 +68,18 @@ class PointsHandler(Handler[ModAction]):
         # Safe mode checks
         if settings.safe_mode:
             # Check if the user's account was deleted/suspended
-            if not user_exists(self.reddit, username):
+            if not reddit.user_exists(username):
                 log.debug(f"u/{username}'s account doesn't exist anymore; skipping.")
                 return False
 
             # If exclude_mods is on, check if the user is a mod
-            if settings.exclude_mods and is_mod(self.reddit, username):
+            if settings.exclude_mods and reddit.is_mod(username):
                 log.debug(f"u/{username} is a mod; skipping.")
                 return False
 
             # Check if this submission has already been re-approved
             if violation is None:  # Technically we can do this for free if custom_point_mod_notes is on, but we don't unless safe_mode is active for consistency
-                violation = get_thing(self.reddit, mod_action.target_fullname)
+                violation = reddit.get_thing(mod_action.target_fullname)
             if not violation.removed:
                 log.debug(f"{violation_fullname} already re-approved; skipping.")
 
@@ -88,7 +87,7 @@ class PointsHandler(Handler[ModAction]):
         expiration_duration = self.point_map.get_expiration(removal_reason_id)
         if not expiration_duration is None:
             if violation is None:
-                violation = get_thing(self.reddit, mod_action.target_fullname)
+                violation = reddit.get_thing(mod_action.target_fullname)
             expiration = datetime.fromtimestamp(violation.created_utc) + relativedelta(months=self.point_map.get_expiration(removal_reason_id))
             # Check if this submission has already expired
             if datetime.now() >= expiration:
@@ -166,17 +165,17 @@ class PointsHandler(Handler[ModAction]):
             log.warning(f"Tried to scan user u/{username} for which we have no data.")
             return False
         # If the user doesn't exist anymore (most often because they deleted their account), dump eet
-        if not user_exists(self.reddit, username):
+        if not reddit.user_exists(username):
             log.info(f"u/{username}'s account doesn't exist anymore - expunging.")
             return self.remove_user(username)
         # Exclude mods if requested
-        if check_mod and settings.exclude_mods and is_mod(self.reddit, username):
+        if check_mod and settings.exclude_mods and reddit.is_mod(username):
             log.info(f"u/{username} is a mod - expunging.")
             return self.remove_user(username)
 
         violations = deepcopy(self.data_store[username]["violations"])  # Get a copy because we'll be modifying it during iteration
         for violation_fullname, violation_data in violations.items():
-            violation = get_thing(self.reddit, violation_fullname)
+            violation = reddit.get_thing(violation_fullname)
             reason = None
 
             # Check for re-approval
@@ -207,7 +206,7 @@ class PointsHandler(Handler[ModAction]):
         log.info(f"Starting full scan ({len(users)} users).")
 
         if settings.exclude_mods:
-            mods = set(mod.name for mod in self.reddit.subreddit(settings.subreddit).moderator())
+            mods = set(mod.name for mod in reddit.sub.moderator())
             for mod in mods:
                 if mod in users and self.remove_user(mod):
                     log.info(f"Wiped record of u/{mod} because they're a mod.")
@@ -228,7 +227,7 @@ class PointsHandler(Handler[ModAction]):
             return False
 
         # Don't act if already banned
-        if next(self.reddit.subreddit(settings.subreddit).banned(username), None) is not None:
+        if next(reddit.sub.banned(username), None) is not None:
             log.info(f"u/{username} is already banned; skipping action.")
             return False
 
@@ -247,7 +246,7 @@ class PointsHandler(Handler[ModAction]):
             # Prepare modmail message
             message = f"u/{username}'s violations have passed the {settings.point_threshold} point threshold:\n\n"
             for fullname in self.data_store[username]["violations"]:
-                violation = get_thing(self.reddit, fullname)
+                violation = reddit.get_thing(fullname)
                 if fullname.startswith("t1_"):
                     kind = "comment"
                     text = violation.body
@@ -265,8 +264,8 @@ class PointsHandler(Handler[ModAction]):
             message += f"{'A' if settings.autoban_mode >= 2 else 'No'} ban has been issued."
 
             # Send modmail
-            send_modmail(self.reddit, subject=f"{'Ban' if settings.autoban_mode >= 2 else 'Point'} alert for u/{username}",
-                         body=message)
+            reddit.send_modmail(subject=f"{'Ban' if settings.autoban_mode >= 2 else 'Point'} alert for u/{username}",
+                                body=message)
 
         # Handle autoban
         if settings.autoban_mode in [2, 3]:

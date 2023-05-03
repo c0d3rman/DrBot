@@ -1,8 +1,6 @@
 import re
-import praw
 from prawcore.exceptions import NotFound
-from drbot import settings, log
-from drbot.util import page_exists
+from drbot import settings, log, reddit
 from drbot.stores import DataStore
 
 
@@ -10,14 +8,13 @@ class WikiStore:
     DATA_PAGE = f"{settings.wiki_page}/data"
     MAX_PAGE_SIZE = 524288  # Experimentally verified
 
-    def __init__(self, reddit: praw.Reddit, data_store: DataStore):
+    def __init__(self, data_store: DataStore):
         assert settings.wiki_page != ""
 
-        self.reddit = reddit
         self.data_store = data_store
 
         # First time setup - wiki page creation
-        if not page_exists(self.reddit, settings.wiki_page):
+        if not reddit.page_exists(settings.wiki_page):
             self._create_pages()
 
         self._load()
@@ -37,14 +34,14 @@ class WikiStore:
             log.debug(f"Data that would be saved:\n\n{dump}")
             return
 
-        self.reddit.subreddit(settings.subreddit).wiki[WikiStore.DATA_PAGE].edit(
+        reddit.sub.wiki[WikiStore.DATA_PAGE].edit(
             content=dump,
             reason="Automated page for DRBOT")
 
     def _load(self) -> None:
         log.info("Loading data from wiki.")
         try:
-            data = self.reddit.subreddit(settings.subreddit).wiki[WikiStore.DATA_PAGE].content_md
+            data = reddit.sub.wiki[WikiStore.DATA_PAGE].content_md
         except NotFound:
             if settings.dry_run:
                 log.info("[DRY RUN: because dry-run mode is active, no wiki pages have been created, so no data was loaded from the wiki.]")
@@ -60,16 +57,16 @@ class WikiStore:
             log.info("[DRY RUN: would have created wiki pages.]")
             return
 
-        self.reddit.subreddit(settings.subreddit).wiki.create(
+        reddit.sub.wiki.create(
             name=settings.wiki_page,
             content="This page and its children house the data for [DRBOT](https://github.com/c0d3rman/DRBOT). Do not edit.",
             reason="Automated page for DRBOT")
-        self.reddit.subreddit(settings.subreddit).wiki[settings.wiki_page].mod.update(listed=True, permlevel=2)  # Make it mod-only
+        reddit.sub.wiki[settings.wiki_page].mod.update(listed=True, permlevel=2)  # Make it mod-only
 
-        self.reddit.subreddit(settings.subreddit).wiki.create(
+        reddit.sub.wiki.create(
             name=WikiStore.DATA_PAGE,
             content="",
             reason="Automated page for DRBOT")
-        self.reddit.subreddit(settings.subreddit).wiki[WikiStore.DATA_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
+        reddit.sub.wiki[WikiStore.DATA_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
 
         self.save()  # Populate the pages

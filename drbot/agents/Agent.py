@@ -1,7 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional, Generic, TypeVar, List
-import praw
 from drbot import log
 from drbot.handlers import Handler
 from drbot.stores import DataStore
@@ -18,12 +17,11 @@ class Agent(ABC, Generic[T]):
     def data_store(self):
         return self._data_store[self.name]
 
-    def __init__(self, reddit: praw.Reddit, data_store: DataStore, name: Optional[str] = None) -> None:
+    def __init__(self, data_store: DataStore, name: Optional[str] = None) -> None:
         super().__init__()
         if name is None:  # By default, the name is just the class name
             name = self.__class__.__name__
         self.name = name
-        self.reddit = reddit
         self._data_store = data_store
         self.handlers = {}
 
