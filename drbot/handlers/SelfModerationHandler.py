@@ -22,14 +22,24 @@ class SelfModerationHandler(Handler[ModAction]):
 
     def handle(self, item: ModAction) -> None:
         self_moderation = False
+        meta_flair = "b17c1006-ef48-11e1-826b-12313b0ce1e2"
+
         if item.action == "removecomment":
-            log.debug(f"Scanning {item.id}.")
             if item._mod == "AutoModerator":
+                return
+            if self.reddit.comment(item.target_fullname).submission.link_flair_template_id == meta_flair: # Don't check meta threads. TBD make general
+                log.debug(f"Ignoring self-moderation in {item.id} because it's a meta thread.")
                 return
             if self.is_self_moderated(item._mod, item.target_fullname):
                 self_moderation = True
         elif item.action in ["approvecomment", "approvelink"]:
             if item._mod == item.target_author:
+                thing = get_thing(self.reddit, item.target_fullname)
+                if type(thing) is Comment:
+                    thing = thing.submission
+                if not thing.link_flair_text is None and thing.link_flair_template_id == meta_flair: # Don't check meta threads. TBD make general
+                    log.debug(f"Ignoring self-moderation in {item.id} because it's a meta thread.")
+                    return
                 self_moderation = True
 
         if self_moderation:
