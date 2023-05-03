@@ -38,6 +38,7 @@ Content-Length: {len(body)}
 
     # The scopes DRBOT needs - see https://praw.readthedocs.io/en/latest/tutorials/refresh_token.html#reddit-oauth2-scopes
     scopes = [
+        "flair", # For Fresh Friday flair.
         "identity",  # Basic - know the username of the account we log into.
         "modcontributors",  # For banning users.
         "modflair",  # For managing flair (Fresh Friday + star user).

@@ -26,7 +26,7 @@ def main():
         wiki_store = WikiStore(reddit, data_store)
         schedule.every(10).minutes.do(wiki_store.save)
 
-    # # Modlog agent
+    # Modlog agent
     modlog_agent = ModlogAgent(reddit, data_store)
     points_handler = PointsHandler()
     modlog_agent.register(points_handler)
@@ -34,6 +34,12 @@ def main():
     modlog_agent.register(AdminHandler())
     schedule.every(5).seconds.do(modlog_agent.run)
     schedule.every().hour.do(points_handler.scan_all)
+
+    # Post agent
+    post_agent = PostAgent(reddit, data_store)
+    # FF flair ID: 3674207c-e8cc-11ed-83d0-52d642db35f8
+    post_agent.register(WeekdayFlairEnforcerHandler(flair_id="d3f4fc1a-ef48-11e1-8db7-12313d28169d", weekday=1))
+    schedule.every(5).seconds.do(post_agent.run)
 
     # Sidebar sync
     sidebar_sync_agent = SidebarSyncAgent(reddit)
