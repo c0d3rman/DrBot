@@ -8,6 +8,7 @@ Free to use by anyone for any reason (licensed under CC0)
 import logging
 import schedule
 import time
+from datetime import timedelta
 from drbot import settings, log
 from drbot.stores import *
 from drbot.agents import *
@@ -39,7 +40,8 @@ def main():
     post_agent = PostAgent(data_store)
     # FF flair ID: 3674207c-e8cc-11ed-83d0-52d642db35f8
     post_agent.register(WeekdayFlairEnforcerHandler(flair_id="d3f4fc1a-ef48-11e1-8db7-12313d28169d", weekday=1))
-    schedule.every(5).seconds.do(post_agent.run)
+    schedule.every().friday.at("00:00").do(
+        lambda: schedule.every(5).seconds.until(timedelta(days=1)).do(post_agent.run)).tag("no_initial")
 
     # Sidebar sync
     sidebar_sync_agent = SidebarSyncAgent()
@@ -49,11 +51,12 @@ def main():
     user_flair_agent = UserFlairAgent(restricted_phrase="⭐", permitted_css_class="staruser")
     schedule.every(1).hour.do(user_flair_agent.run)
 
+    # Run all jobs immediately except those that shouldn't be run initially
+    [job.run() for job in schedule.get_jobs() if not "no_initial" in job.tags]
     # The scheduler loop
-    schedule.run_all()
     while True:
         schedule.run_pending()
-        time.sleep(1)
+        time.sleep(schedule.idle_seconds())
 
 
 if __name__ == "__main__":
