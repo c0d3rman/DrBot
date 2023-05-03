@@ -28,7 +28,8 @@ class Agent(ABC, Generic[T]):
         # Initialize our slice of the DataStore
         if self.name in self._data_store:
             raise Exception(f'Name "{self.name}" already exists in the DataStore.')
-        self._data_store[self.name] = {"_meta": {"last_processed": self.id(self.get_latest_item())}}
+        latest = self.get_latest_item()
+        self._data_store[self.name] = {"_meta": {"last_processed": None if latest is None else self.id(latest)}}
 
     def get_data_store(self, handler: Handler) -> dict:
         """Get a reserved slice of the DataStore for a given handler.
