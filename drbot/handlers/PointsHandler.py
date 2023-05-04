@@ -265,7 +265,7 @@ class PointsHandler(Handler[ModAction]):
 
             # Send modmail
             reddit().send_modmail(subject=f"{'Ban' if settings.autoban_mode >= 2 else 'Point'} alert for u/{username}",
-                                body=message)
+                                  body=message)
 
         # Handle autoban
         if settings.autoban_mode in [2, 3]:

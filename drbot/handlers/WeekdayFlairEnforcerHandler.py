@@ -49,12 +49,12 @@ class WeekdayFlairEnforcerHandler(Handler[Submission]):
         if settings.dry_run:
             log.info(f"[DRY RUN: would have removed post {post.fullname}]")
         else:
-            post.remove(mod_note="DRBOT: removed for weekday flair restriction", reason_id=None)  # TBD reason ID
+            post.remove(mod_note="DRBOT: removed for weekday flair restriction", reason_id="511a2061-fb9b-4f65-a073-7425eb9161e9")  # TBD generalize
 
         # Modmail the user
         reddit().send_modmail(add_common=False,
-                            subject=f"Your post was removed due to Rule 8: Fresh Friday",
-                            body=f"""Hi u/{post.author}, your [post](https://reddit.com{post.permalink}) was removed because of Rule 8: Fresh Friday.
+                              subject=f"Your post was removed due to Rule 8: Fresh Friday",
+                              body=f"""Hi u/{post.author}, your [post](https://reddit.com{post.permalink}) was removed because of Rule 8: Fresh Friday.
 
 On Fridays, all posts must discuss fresh topics. We encourage posts about religions other than Christianity/Islam/atheism. Banned topics include: problem of evil, Kalam, fine tuning, disciple martyrdom, Quranic miracles, classical theism.
 
