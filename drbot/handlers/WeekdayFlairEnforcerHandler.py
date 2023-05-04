@@ -21,7 +21,7 @@ class WeekdayFlairEnforcerHandler(Handler[Submission]):
         super().setup(agent)
 
         # Get the text of the allowed flair
-        flair_text = [x for x in reddit.sub.flair.link_templates.__iter__() if x['id'] == self.flair_id]
+        flair_text = [x for x in reddit().sub.flair.link_templates.__iter__() if x['id'] == self.flair_id]
         if len(flair_text) == 0:
             raise Exception(f"Flair template ID {self.flair_id} doesn't exist on your sub.")
         self.flair_text = flair_text[0]['text']
@@ -39,20 +39,20 @@ class WeekdayFlairEnforcerHandler(Handler[Submission]):
             return
 
         # Ignore mod posts
-        if reddit.is_mod(item.author):
+        if reddit().is_mod(item.author):
             return
 
         log.info(f"Illegal weekday flair detected on post {item.fullname}")
 
         # Remove the post
-        post = reddit.submission(item.id)
+        post = reddit().submission(item.id)
         if settings.dry_run:
             log.info(f"[DRY RUN: would have removed post {post.fullname}]")
         else:
             post.remove(mod_note="DRBOT: removed for weekday flair restriction", reason_id=None)  # TBD reason ID
 
         # Modmail the user
-        reddit.send_modmail(add_common=False,
+        reddit().send_modmail(add_common=False,
                             subject=f"Your post was removed due to Rule 8: Fresh Friday",
                             body=f"""Hi u/{post.author}, your [post](https://reddit.com{post.permalink}) was removed because of Rule 8: Fresh Friday.
 

@@ -15,7 +15,7 @@ class UserFlairAgent:
     def run(self) -> None:
         log.info(f'Scanning user flair for restricted phrase "{self.restricted_phrase}", which is only permitted for users with CSS class "{self.permitted_css_class}".')
         count = 0
-        for flair in reddit.sub.flair(limit=None):
+        for flair in reddit().sub.flair(limit=None):
             count += 1
             if (flair['flair_css_class'] != self.permitted_css_class
                     and not flair['flair_text'] is None
@@ -24,8 +24,8 @@ class UserFlairAgent:
                 if settings.dry_run:
                     log.info(f"[DRY RUN: would have reset flair for u/{flair['user'].name}]")
                 else:
-                    reddit.sub.flair.delete(flair['user'].name)
-                reddit.send_modmail(recipient=flair['user'].name,
+                    reddit().sub.flair.delete(flair['user'].name)
+                reddit().send_modmail(recipient=flair['user'].name,
                                     subject="Your flair was illegal and has been reset",
                                     body=f"""Hi u/{flair['user'].name}, your flair contained a star ⭐ which is only for [star users](https://www.reddit.com/r/DebateReligion/wiki/star_hall_of_fame/).
                              

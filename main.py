@@ -9,7 +9,7 @@ import logging
 import schedule
 import time
 from datetime import timedelta
-from drbot import settings, log
+from drbot import settings, log, reddit
 from drbot.stores import *
 from drbot.agents import *
 from drbot.handlers import *
@@ -18,7 +18,7 @@ from drbot.handlers import *
 def main():
     log.info(f"DRBOT for r/{settings.subreddit} starting up")
 
-    from drbot import reddit  # Make sure we can login before doing anything else
+    reddit.login()
 
     data_store = DataStore()
 

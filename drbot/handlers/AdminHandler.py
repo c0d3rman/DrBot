@@ -22,7 +22,7 @@ class AdminHandler(Handler[ModAction]):
             else:
                 # Strange action, send a simple modmail and return
                 if settings.admin_modmail:
-                    reddit.send_modmail(subject=f'Admins took action "{item.action}" in your sub',
+                    reddit().send_modmail(subject=f'Admins took action "{item.action}" in your sub',
                                         body=f"Reddit's Anti-Evil Operations took action {item.action} in your sub. See DRBOT's log for more details.")
                 log.info(f"Full info for unknown action type:\n{vars(item)}")
                 return
@@ -45,4 +45,4 @@ class AdminHandler(Handler[ModAction]):
                         message += f">**{data['title']}**\n>\n"
                     message += re.sub(r"^", ">", data['body' if kind == 'comment' else 'selftext'], flags=re.MULTILINE)
 
-                reddit.send_modmail(subject=f"Admins removed a {kind} in your sub", body=message)
+                reddit().send_modmail(subject=f"Admins removed a {kind} in your sub", body=message)

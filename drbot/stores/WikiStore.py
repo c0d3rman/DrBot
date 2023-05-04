@@ -14,7 +14,7 @@ class WikiStore:
         self.data_store = data_store
 
         # First time setup - wiki page creation
-        if not reddit.page_exists(settings.wiki_page):
+        if not reddit().page_exists(settings.wiki_page):
             self._create_pages()
 
         self._load()
@@ -34,14 +34,14 @@ class WikiStore:
             log.debug(f"Data that would be saved:\n\n{dump}")
             return
 
-        reddit.sub.wiki[WikiStore.DATA_PAGE].edit(
+        reddit().sub.wiki[WikiStore.DATA_PAGE].edit(
             content=dump,
             reason="Automated page for DRBOT")
 
     def _load(self) -> None:
         log.info("Loading data from wiki.")
         try:
-            data = reddit.sub.wiki[WikiStore.DATA_PAGE].content_md
+            data = reddit().sub.wiki[WikiStore.DATA_PAGE].content_md
         except NotFound:
             if settings.dry_run:
                 log.info("[DRY RUN: because dry-run mode is active, no wiki pages have been created, so no data was loaded from the wiki.]")
@@ -57,16 +57,16 @@ class WikiStore:
             log.info("[DRY RUN: would have created wiki pages.]")
             return
 
-        reddit.sub.wiki.create(
+        reddit().sub.wiki.create(
             name=settings.wiki_page,
             content="This page and its children house the data for [DRBOT](https://github.com/c0d3rman/DRBOT). Do not edit.",
             reason="Automated page for DRBOT")
-        reddit.sub.wiki[settings.wiki_page].mod.update(listed=True, permlevel=2)  # Make it mod-only
+        reddit().sub.wiki[settings.wiki_page].mod.update(listed=True, permlevel=2)  # Make it mod-only
 
-        reddit.sub.wiki.create(
+        reddit().sub.wiki.create(
             name=WikiStore.DATA_PAGE,
             content="",
             reason="Automated page for DRBOT")
-        reddit.sub.wiki[WikiStore.DATA_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
+        reddit().sub.wiki[WikiStore.DATA_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
 
         self.save()  # Populate the pages

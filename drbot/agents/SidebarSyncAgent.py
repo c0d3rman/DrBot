@@ -8,18 +8,18 @@ class SidebarSyncAgent:
 
     def __init__(self):
         # Some subs don't have an old-reddit sidebar wiki page
-        if not reddit.page_exists(SidebarSyncAgent.SIDEBAR_WIKI):
+        if not reddit().page_exists(SidebarSyncAgent.SIDEBAR_WIKI):
             if settings.dry_run:
                 log.info(f"[DRY RUN: would have created the {SidebarSyncAgent.SIDEBAR_WIKI} wiki page.]")
             else:
-                reddit.sub.wiki.create(
+                reddit().sub.wiki.create(
                     name=SidebarSyncAgent.SIDEBAR_WIKI,
                     content="",
                     reason="Automated page for DRBOT")
 
     def run(self) -> None:
         markdown = self.get_markdown().strip()
-        current = reddit.sub.wiki[SidebarSyncAgent.SIDEBAR_WIKI].content_md.strip()
+        current = reddit().sub.wiki[SidebarSyncAgent.SIDEBAR_WIKI].content_md.strip()
 
         if markdown == current:
             return
@@ -34,7 +34,7 @@ class SidebarSyncAgent:
         if settings.dry_run:
             log.info(f"[DRY RUN: would have changed the old-reddit sidebar content to:\n\n{markdown}\n\n]")
         else:
-            reddit.sub.wiki[SidebarSyncAgent.SIDEBAR_WIKI].edit(content=markdown, reason="Automated sidebar sync by DRBOT")
+            reddit().sub.wiki[SidebarSyncAgent.SIDEBAR_WIKI].edit(content=markdown, reason="Automated sidebar sync by DRBOT")
 
     def get_markdown(self) -> str:
         """Get the new reddit sidebar represented as markdown."""
@@ -49,11 +49,11 @@ class SidebarSyncAgent:
 [](http://www.reddit.com/r/DebateReligionCSS/submit?selftext=true&title=%5BOn%2DTopic%5D)""")
 
         # ID card
-        id_card = reddit.sub.widgets.id_card
+        id_card = reddit().sub.widgets.id_card
         bar.append(f"#### {settings.subreddit}\n\n{id_card.description}")  # TBD: special styling
 
         # Sidebar widgets
-        for widget in reddit.sub.widgets.sidebar:
+        for widget in reddit().sub.widgets.sidebar:
             if type(widget) is widgets.RulesWidget:
                 bar.append("#### Rules\n\n" + "\n\n".join(f"{i+1}. **{rule['shortName']}**  \n{rule['description']}" for i, rule in enumerate(widget.data)))
             elif type(widget) is widgets.TextArea:

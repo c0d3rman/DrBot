@@ -9,11 +9,11 @@ class PostAgent(Agent[Submission]):
     """Scans incoming posts and runs sub-tools on them."""
 
     def get_items(self) -> List[Submission]:
-        return list(reddit.sub.new(
+        return list(reddit().sub.new(
             limit=None, params={"before": self.data_store["_meta"]["last_processed"]}))
 
     def id(self, item: Submission) -> str:
         return item.fullname
 
     def get_latest_item(self) -> Optional[Submission]:
-        return next(reddit.sub.new(limit=1))
+        return next(reddit().sub.new(limit=1))

@@ -28,7 +28,7 @@ class PointMap:
         log.debug(f"Point map: {json.dumps(point_map)}")
 
         # Check for removal reasons on your sub that aren't in the map
-        missing_reasons = set(r.title for r in reddit.sub.mod.removal_reasons) - set(point_map.keys())
+        missing_reasons = set(r.title for r in reddit().sub.mod.removal_reasons) - set(point_map.keys())
         if len(missing_reasons) > 0:
             message = "Some removal reasons on your sub don't have an entry in config/settings.toml (they will be treated as costing 0 points):"
             for r in missing_reasons:
