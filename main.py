@@ -21,11 +21,7 @@ def main():
     reddit.login()
 
     data_store = DataStore()
-
-    # Load from wiki before creating any agents to avoid conflicts
-    if settings.wiki_page != "":
-        wiki_store = WikiStore(data_store)
-        schedule.every(10).minutes.do(wiki_store.save)
+    schedule.every(1).minute.do(data_store.save)
 
     # Modlog agent
     modlog_agent = ModlogAgent(data_store)
@@ -51,12 +47,19 @@ def main():
     user_flair_agent = UserFlairAgent(restricted_phrase="⭐", permitted_css_class="staruser")
     schedule.every(1).hour.do(user_flair_agent.run)
 
+    # Load from wiki last to load data into the existing agents' data stores
+    if settings.wiki_page != "":
+        wiki_store = WikiStore(data_store)
+        schedule.every(10).minutes.do(wiki_store.save)
+
     # Run all jobs immediately except those that shouldn't be run initially
     [job.run() for job in schedule.get_jobs() if not "no_initial" in job.tags]
     # The scheduler loop
     while True:
         schedule.run_pending()
-        time.sleep(schedule.idle_seconds())
+        t = schedule.idle_seconds()
+        if t > 0:
+            time.sleep(t)
 
 
 if __name__ == "__main__":
