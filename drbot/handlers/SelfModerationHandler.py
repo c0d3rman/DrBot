@@ -26,7 +26,8 @@ class SelfModerationHandler(Handler[ModAction]):
         if item.action == "removecomment":
             if item._mod == "AutoModerator":
                 return
-            if reddit().comment(item.target_fullname).submission.link_flair_template_id == meta_flair:  # Don't check meta threads. TBD make general
+            post = reddit().comment(item.target_fullname).submission
+            if not post.link_flair_text is None and post.link_flair_template_id == meta_flair:  # Don't check meta threads. TBD make general
                 log.debug(f"Ignoring self-moderation in {item.id} because it's a meta thread.")
                 return
             if self.is_self_moderated(item._mod, item.target_fullname):
