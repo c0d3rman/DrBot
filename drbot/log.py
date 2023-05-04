@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 import logging
+import sys
 import praw
 from drbot import settings
 
@@ -100,6 +101,8 @@ class TemplateLoggingFormatter(logging.Formatter):
         self.template = template
 
     def format(self, record: logging.LogRecord) -> str:
+        if isinstance(record.msg, Exception):  # Show stack trace
+            record.exc_info = sys.exc_info()
         base = super().format(record)
         t = self.template[record.levelno]
         if t == "":

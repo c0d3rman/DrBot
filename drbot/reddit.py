@@ -150,17 +150,16 @@ def login() -> praw.Reddit:
     modmail_handler.setFormatter(TemplateLoggingFormatter(fmt=BASE_FORMAT, template={
         logging.ERROR: """DRBOT has encountered a non-fatal error:
 
-    ```
-    {log}
-    ```
+```
+{log}
+```
 
-    DRBOT is still running. Check the log for more details.""",
+DRBOT is still running. Check the log for more details.""",
         logging.CRITICAL: """DRBOT has encountered a fatal error and crashed:
 
-    ```
-    {log}
-    ```"""
-    }))
+```
+{log}
+```"""}))
     modmail_handler.setLevel(logging.ERROR)
     log.addHandler(modmail_handler)
 
