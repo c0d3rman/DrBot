@@ -2,7 +2,9 @@ import praw
 import prawcore
 import random
 from typing import Optional
+import logging
 from drbot import settings, log
+from drbot.log import ModmailLoggingHandler, TemplateLoggingFormatter, BASE_FORMAT
 
 DRBOT_CLIENT_ID_PATH = "drbot/drbot_client_id.txt"
 
@@ -112,8 +114,7 @@ def send_modmail(subject: str, body: str, recipient: Optional[praw.reddit.models
     if settings.dry_run:
         log.info(f"""[DRY RUN: would have sent the following modmail:
 Subject: "{subject}"
-{body}
-]""")
+{body}]""")
     else:
         log.debug(f"""Sending modmail:
 Subject: "{subject}"
@@ -139,3 +140,23 @@ reddit.page_exists = page_exists
 reddit.get_thing = get_thing
 reddit.send_modmail = send_modmail
 reddit.is_mod = is_mod
+
+
+# Set up logging to modmail
+modmail_handler = ModmailLoggingHandler(reddit)
+modmail_handler.setFormatter(TemplateLoggingFormatter(fmt=BASE_FORMAT, template={
+    logging.ERROR: """DRBOT has encountered a non-fatal error:
+
+```
+{log}
+```
+
+DRBOT is still running. Check the log for more details.""",
+    logging.CRITICAL: """DRBOT has encountered a fatal error and crashed:
+
+```
+{log}
+```"""
+}))
+modmail_handler.setLevel(logging.ERROR)
+log.addHandler(modmail_handler)

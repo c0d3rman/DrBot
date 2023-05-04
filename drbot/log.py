@@ -1,4 +1,6 @@
+from collections.abc import Mapping
 import logging
+import praw
 from drbot import settings
 
 BASE_FORMAT = "[%(asctime)s] [%(filename)s/%(funcName)s:%(lineno)d] %(levelname)s | %(message)s"
@@ -29,7 +31,7 @@ class LogFormatter(logging.Formatter):
         else:
             record.color_on = ""
             record.color_off = ""
-        return super(LogFormatter, self).format(record, *args, **kwargs)
+        return super().format(record, *args, **kwargs)
 
 
 # If enabled, low PRAW output to file
@@ -59,3 +61,48 @@ if settings.log_file != "":
     logfile_handler.setFormatter(logging.Formatter(fmt=BASE_FORMAT))
     logfile_handler.setLevel(settings.file_log_level)
     log.addHandler(logfile_handler)
+
+# We also log to modmail, which is initialized in drbot.reddit
+# The classes below are for that
+
+
+class ModmailLoggingHandler(logging.Handler):
+    """A log handler which sends logs to modmail.
+    Not to be confused with DRBOT's Handlers.
+    The reddit object must be passed in to avoid circular dependencies."""
+
+    def __init__(self, reddit: praw.Reddit, *args, **kwargs) -> None:
+        logging.Handler.__init__(self, *args, **kwargs)
+        self.reddit = reddit
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            self.reddit.send_modmail(subject=f"encountered a {record.levelname} level error", body=self.format(record))
+        except Exception:
+            self.handleError(record)
+
+
+class TemplateLoggingFormatter(logging.Formatter):
+    """A log formatter which embeds the log text in a customizable template.
+    Supports different templates for each log level.
+    Include {log} in your template where you want the log to appear."""
+
+    def __init__(self, template: Mapping[int, str] | str = "", *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        if type(template) is str:
+            template = {k: template for k in logging._levelToName}
+        else:
+            for k in logging._levelToName:
+                if not k in template:
+                    template[k] = ""
+
+        self.template = template
+
+    def format(self, record: logging.LogRecord) -> str:
+        base = super().format(record)
+        t = self.template[record.levelno]
+        if t == "":
+            return base
+        else:
+            return t.format(log=base)
