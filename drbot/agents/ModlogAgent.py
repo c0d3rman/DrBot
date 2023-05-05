@@ -1,5 +1,6 @@
 from typing import Optional, List
 from praw.models import ModAction
+from praw.models.mod_action import ModAction
 from drbot import settings, reddit
 from drbot.agents import Agent
 
@@ -18,3 +19,6 @@ class ModlogAgent(Agent[ModAction]):
     def get_latest_item(self) -> Optional[ModAction]:
         if not settings.first_time_retroactive_modlog:
             return next(reddit().sub.mod.log(limit=1))
+        
+    def skip_item(self, item: ModAction) -> bool:
+        return item._mod == reddit().user.me().name
