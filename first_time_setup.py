@@ -44,6 +44,7 @@ Content-Length: {len(body)}
         "modflair",  # For managing flair (Fresh Friday + star user).
         "modlog",  # For reading the modlog.
         "modmail",  # For sending modmail to mods.
+        "modposts", # To remove posts for Fresh Friday flair.
         "modself",  # Unused - for accepting mod invites.
         "modwiki",  # For making DRBOT's wiki pages mod-only.
         "read",  # For reading posts/comments.
