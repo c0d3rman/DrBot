@@ -39,11 +39,11 @@ def main():
         lambda: schedule.every(5).seconds.until(timedelta(days=1)).do(post_agent.run)).tag("no_initial")
 
     # Sidebar sync
-    sidebar_sync_agent = SidebarSyncAgent()
+    sidebar_sync_agent = SidebarSyncAgent(data_store)
     schedule.every(1).hour.do(sidebar_sync_agent.run)
 
     # Star User flair enforcement
-    user_flair_agent = UserFlairAgent(restricted_phrase="⭐", permitted_css_class="staruser")
+    user_flair_agent = UserFlairAgent(data_store, restricted_phrase="⭐", permitted_css_class="staruser")
     schedule.every(1).hour.do(user_flair_agent.run)
 
     # Load from wiki last to load data into the existing agents' data stores
