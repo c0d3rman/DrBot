@@ -51,7 +51,7 @@ class Agent(ABC, Generic[T]):
 
     def run(self) -> None:
         log.debug(f"{self.name} running.")
-        items = self.get_items()
+        items = [item for item in self.get_items() if not self.skip_item(item)]
         if len(items) == 0:
             return
         log.info(f"{self.name} processing {len(items)} new items.")
@@ -63,9 +63,6 @@ class Agent(ABC, Generic[T]):
         # Process items
         for item in items:
             log.debug(f"{self.name} handling item {self.id(item)}")
-            if self.skip_item(item):
-                log.debug(f"Skipping item {self.id(item)}")
-                continue
             for handler in self.handlers.values():
                 handler.handle(item)
             self.data_store["_meta"]["last_processed"] = self.id(item)

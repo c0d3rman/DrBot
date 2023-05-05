@@ -38,6 +38,6 @@ class DataStore(dict):
         """Save the DataStore to a local file."""
 
         if settings.local_backup_file != "":
-            log.info(f"Backing up data locally ({settings.local_backup_file}).")
+            log.debug(f"Backing up data locally ({settings.local_backup_file}).")
             with open(settings.local_backup_file, "w") as f:
                 f.write(self.to_json())
