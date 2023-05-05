@@ -38,13 +38,13 @@ Content-Length: {len(body)}
 
     # The scopes DRBOT needs - see https://praw.readthedocs.io/en/latest/tutorials/refresh_token.html#reddit-oauth2-scopes
     scopes = [
-        "flair", # For Fresh Friday flair.
+        "flair",  # For Fresh Friday flair.
         "identity",  # Basic - know the username of the account we log into.
         "modcontributors",  # For banning users.
         "modflair",  # For managing flair (Fresh Friday + star user).
         "modlog",  # For reading the modlog.
         "modmail",  # For sending modmail to mods.
-        "modposts", # To remove posts for Fresh Friday flair.
+        "modposts",  # To remove posts for Fresh Friday flair.
         "modself",  # Unused - for accepting mod invites.
         "modwiki",  # For making DRBOT's wiki pages mod-only.
         "read",  # For reading posts/comments.
@@ -157,7 +157,6 @@ Press ENTER to continue...
             "Password?",
             validate=lambda p: validate_manual_login(answers["client_id"], answers["client_secret"], answers["username"], p),
             validate_while_typing=False).unsafe_ask()
-
 
     return answers
 

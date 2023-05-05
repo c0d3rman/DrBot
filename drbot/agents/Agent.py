@@ -63,9 +63,12 @@ class Agent(ABC, Generic[T]):
         # Process items
         for item in items:
             log.debug(f"{self.name} handling item {self.id(item)}")
+            if self.skip_item(item):
+                log.debug(f"Skipping item {self.id(item)}")
+                continue
             for handler in self.handlers.values():
                 handler.handle(item)
-        self.data_store["_meta"]["last_processed"] = self.id(item)
+            self.data_store["_meta"]["last_processed"] = self.id(item)
 
         # Make a local backup
         self._data_store.save()
@@ -88,3 +91,9 @@ class Agent(ABC, Generic[T]):
         so you don't process items stretching backwards forever on the first run.
         If you don't return an item (or don't implement this), it will in fact process backwards forever."""
         pass
+
+    def skip_item(self, item: T) -> bool:
+        """Optionally, you can override this to skip cetain items.
+        mostly useful to avoid updating last_processed with your own modlog entries,
+        which can get you stuck in update loops."""
+        return False

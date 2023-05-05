@@ -23,7 +23,7 @@ class AdminHandler(Handler[ModAction]):
                 # Strange action, send a simple modmail and return
                 if settings.admin_modmail:
                     reddit().send_modmail(subject=f'Admins took action "{item.action}" in your sub',
-                                        body=f"Reddit's Anti-Evil Operations took action {item.action} in your sub. See DRBOT's log for more details.")
+                                          body=f"Reddit's Anti-Evil Operations took action {item.action} in your sub. See DRBOT's log for more details.")
                 log.info(f"Full info for unknown action type:\n{vars(item)}")
                 return
 
