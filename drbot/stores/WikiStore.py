@@ -20,14 +20,25 @@ class WikiStore:
         self._load()
 
     def save(self) -> None:
-        log.info("Saving data to wiki.")
-
         dump = f"// This page houses [DRBOT](https://github.com/c0d3rman/DRBOT)'s user records. **DO NOT EDIT!**\n\n{self.data_store.to_json()}"
 
         if len(dump) > WikiStore.MAX_PAGE_SIZE:
             log.error(f"Data is too long to be written to wiki! ({len(dump)}/{WikiStore.MAX_PAGE_SIZE} characters.) Check log for full data.")
             log.debug(dump)
             return
+        
+        # Don't write if there's no change
+        try:
+            data = reddit().sub.wiki[WikiStore.DATA_PAGE].content_md
+        except NotFound:
+            log.error(f"Somehow, tried to save wiki page {WikiStore.DATA_PAGE} without it existing.")
+            return
+        else:
+            if data == dump:
+                log.debug("Not saving to wiki because it's already identical to what we would save.")
+                return
+        
+        log.info("Saving data to wiki.")
 
         if settings.dry_run:
             log.info("[DRY RUN: would have saved some data to the wiki.]")
