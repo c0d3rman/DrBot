@@ -8,79 +8,49 @@ from drbot.log import ModmailLoggingHandler, TemplateLoggingFormatter, BASE_FORM
 
 DRBOT_CLIENT_ID_PATH = "drbot/drbot_client_id.txt"
 
-_reddit = None
+
+class InfiniteRetryStrategy(prawcore.sessions.RetryStrategy):
+    """For use with PRAW.
+    Retries requests forever using capped exponential backoff with jitter.
+    This prevents the bot from dying when reddit's servers have an outage or the internet is down.
+    Use by setting
+        reddit._core._retry_strategy_class = InfiniteRetryStrategy
+    right after initializing your praw.Reddit object."""
+
+    def _sleep_seconds(self):
+        if self._attempts == 0:
+            return None
+        if self._attempts > 3:
+            log.warn(f"Request still failing after multiple tries, retrying... ({self._attempts})")
+        return random.randrange(0, min(self._cap, self._base * 2 ** self._attempts))
+
+    def __init__(self, _base=2, _cap=60, _attempts=0):
+        self._base = _base
+        self._cap = _cap
+        self._attempts = _attempts
+
+    def consume_available_retry(self):
+        return type(self)(_base=self._base, _cap=self._cap, _attempts=self._attempts + 1)
+
+    def should_retry_on_failure(self):
+        return True
 
 
-def reddit() -> praw.Reddit:
-    global _reddit
-    if _reddit is None:
-        raise Exception("You need to call reddit.login() before you can use the reddit() object.")
-    return _reddit
+class Reddit(praw.Reddit):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._core._retry_strategy_class = InfiniteRetryStrategy
 
 
-def login() -> praw.Reddit:
-    global _reddit
 
-    if settings.refresh_token != "":
-        with open(DRBOT_CLIENT_ID_PATH, "r") as f:
-            drbot_client_id = f.read()
-        _reddit = praw.Reddit(client_id=drbot_client_id,
-                              client_secret=None,
-                              refresh_token=settings.refresh_token,
-                              user_agent="DRBOT")
-    else:
-        _reddit = praw.Reddit(client_id=settings.client_id,
-                              client_secret=settings.client_secret,
-                              username=settings.username,
-                              password=settings.password,
-                              user_agent=f"DRBOT")
+    @property
+    def sub(self):
+        return self.subreddit(settings.subreddit)
 
-    log.info(f"Logged in to Reddit as u/{_reddit.user.me().name}")
-
-    class InfiniteRetryStrategy(prawcore.sessions.RetryStrategy):
-        """For use with PRAW.
-        Retries requests forever using capped exponential backoff with jitter.
-        This prevents the bot from dying when reddit's servers have an outage or the internet is down.
-        Use by setting
-            reddit._core._retry_strategy_class = InfiniteRetryStrategy
-        right after initializing your praw.Reddit object."""
-
-        def _sleep_seconds(self):
-            if self._attempts == 0:
-                return None
-            if self._attempts > 3:
-                log.warn(f"Request still failing after multiple tries, retrying... ({self._attempts})")
-            return random.randrange(0, min(self._cap, self._base * 2 ** self._attempts))
-
-        def __init__(self, _base=2, _cap=60, _attempts=0):
-            self._base = _base
-            self._cap = _cap
-            self._attempts = _attempts
-
-        def consume_available_retry(self):
-            return type(self)(_base=self._base, _cap=self._cap, _attempts=self._attempts + 1)
-
-        def should_retry_on_failure(self):
-            return True
-
-    _reddit._core._retry_strategy_class = InfiniteRetryStrategy
-
-    try:
-        if not _reddit.subreddit(settings.subreddit).user_is_moderator:
-            raise Exception(f"u/{_reddit.user.me().name} is not a mod in r/{settings.subreddit}")
-    except prawcore.exceptions.Forbidden:
-        raise Exception(f"r/{settings.subreddit} is private or quarantined.")
-    except prawcore.exceptions.NotFound:
-        raise Exception(f"r/{settings.subreddit} is banned.")
-
-    # Helper functions bound to the reddit object
-
-    _reddit.sub = _reddit.subreddit(settings.subreddit)
-
-    def user_exists(username: str) -> bool:
+    def user_exists(self, username: str) -> bool:
         """Check if a user exists on reddit."""
         try:
-            _reddit.redditor(username).fullname
+            self.redditor(username).fullname
         except prawcore.exceptions.NotFound:
             return False  # Account deleted
         except AttributeError:
@@ -88,23 +58,23 @@ def login() -> praw.Reddit:
         else:
             return True
 
-    def page_exists(page: str) -> bool:
+    def page_exists(self, page: str) -> bool:
         try:
-            _reddit.sub.wiki[page].may_revise
+            self.sub.wiki[page].may_revise
             return True
         except prawcore.exceptions.NotFound:
             return False
 
-    def get_thing(fullname: str) -> praw.reddit.models.Comment | praw.reddit.models.Submission:
+    def get_thing(self, fullname: str) -> praw.reddit.models.Comment | praw.reddit.models.Submission:
         """For getting a comment or submission from a fullname when you don't know which one it is."""
         if fullname.startswith("t1_"):
-            return _reddit.comment(fullname)
+            return self.comment(fullname)
         elif fullname.startswith("t3_"):
-            return _reddit.submission(fullname[3:])  # PRAW requires us to chop off the "t3_"
+            return self.submission(fullname[3:])  # PRAW requires us to chop off the "t3_"
         else:
             raise Exception(f"Unknown fullname type: {fullname}")
 
-    def send_modmail(subject: str, body: str, recipient: Optional[praw.reddit.models.Redditor | str] = None, add_common: bool = True, **kwargs) -> None:
+    def send_modmail(self, subject: str, body: str, recipient: Optional[praw.reddit.models.Redditor | str] = None, add_common: bool = True, **kwargs) -> None:
         """Sends modmail, handling dry_run mode.
         Creates a moderator discussion by default if a recipient is not provided."""
 
@@ -131,19 +101,50 @@ def login() -> praw.Reddit:
                 trailer = "... [truncated]"
                 body = body[:10000 - len(trailer)] + trailer
 
-            _reddit.sub.modmail.create(subject=subject, body=body, recipient=recipient, **kwargs)
+            self.sub.modmail.create(subject=subject, body=body, recipient=recipient, **kwargs)
 
-    def is_mod(username: str | praw.reddit.models.Redditor) -> bool:
+    def is_mod(self, username: str | praw.reddit.models.Redditor) -> bool:
         """Check if a user is a mod in your sub"""
         if isinstance(username, praw.reddit.models.Redditor):
             username = username.name
-        return len(_reddit.sub.moderator(username)) > 0
+        return len(self.sub.moderator(username)) > 0
 
-    _reddit.user_exists = user_exists
-    _reddit.page_exists = page_exists
-    _reddit.get_thing = get_thing
-    _reddit.send_modmail = send_modmail
-    _reddit.is_mod = is_mod
+
+_reddit = None
+
+
+def reddit() -> praw.Reddit:
+    if _reddit is None:
+        raise Exception("You need to call reddit.login() before you can use the reddit() object.")
+    return _reddit
+
+
+def login() -> praw.Reddit:
+    global _reddit
+
+    if settings.refresh_token != "":
+        with open(DRBOT_CLIENT_ID_PATH, "r") as f:
+            drbot_client_id = f.read()
+        _reddit = Reddit(client_id=drbot_client_id,
+                         client_secret=None,
+                         refresh_token=settings.refresh_token,
+                         user_agent="DRBOT")
+    else:
+        _reddit = Reddit(client_id=settings.client_id,
+                         client_secret=settings.client_secret,
+                         username=settings.username,
+                         password=settings.password,
+                         user_agent=f"DRBOT")
+
+    log.info(f"Logged in to Reddit as u/{_reddit.user.me().name}")
+
+    try:
+        if not _reddit.subreddit(settings.subreddit).user_is_moderator:
+            raise Exception(f"u/{_reddit.user.me().name} is not a mod in r/{settings.subreddit}")
+    except prawcore.exceptions.Forbidden:
+        raise Exception(f"r/{settings.subreddit} is private or quarantined.")
+    except prawcore.exceptions.NotFound:
+        raise Exception(f"r/{settings.subreddit} is banned.")
 
     # Set up logging to modmail
     modmail_handler = ModmailLoggingHandler(_reddit)

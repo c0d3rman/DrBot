@@ -1,14 +1,16 @@
-from typing import Optional
 from drbot import settings, log, reddit
+from drbot.agents import Agent
+from drbot.stores import DataStore
 
 
-class UserFlairAgent:
+class UserFlairAgent(Agent):
     """Allows you to set a restricted phrase that can only be used by certain users in their flair.
     Scans every single user who has ever assigned themselves flair in your sub,
     so this is not a good idea for bigger subs.
     Recommended alongside an automod rule, which will instantly catch changed flair if the user makes a comment/post."""
 
-    def __init__(self, restricted_phrase: str, permitted_css_class: Optional[str] = None):
+    def __init__(self, data_store: DataStore, restricted_phrase: str, permitted_css_class: str | None = None, name: str | None = None) -> None:
+        super().__init__(data_store, name)
         self.restricted_phrase = restricted_phrase
         self.permitted_css_class = permitted_css_class
 

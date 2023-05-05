@@ -1,12 +1,16 @@
 from praw.models.reddit import widgets
 from drbot import settings, log, reddit
+from drbot.agents import Agent
+from drbot.stores import DataStore
 
 
-class SidebarSyncAgent:
+class SidebarSyncAgent(Agent):
     """Takes your new reddit sidebar and changes the old reddit sidebar to match it."""
     SIDEBAR_WIKI = "config/sidebar"
 
-    def __init__(self):
+    def __init__(self, data_store: DataStore, name: str | None = None) -> None:
+        super().__init__(data_store, name)
+
         # Some subs don't have an old-reddit sidebar wiki page
         if not reddit().page_exists(SidebarSyncAgent.SIDEBAR_WIKI):
             if settings.dry_run:
