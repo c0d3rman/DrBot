@@ -34,8 +34,7 @@ def main():
 
     # Post agent
     post_agent = PostAgent(data_store)
-    # FF flair ID: 3674207c-e8cc-11ed-83d0-52d642db35f8
-    post_agent.register(WeekdayFlairEnforcerHandler(flair_id="d3f4fc1a-ef48-11e1-8db7-12313d28169d", weekday=1))
+    post_agent.register(WeekdayFlairEnforcerHandler(flair_id="3674207c-e8cc-11ed-83d0-52d642db35f8", weekday=4))
     schedule.every().friday.at("00:00").do(
         lambda: schedule.every(5).seconds.until(timedelta(days=1)).do(post_agent.run)).tag("no_initial")
 
@@ -50,7 +49,7 @@ def main():
     # Load from wiki last to load data into the existing agents' data stores
     if settings.wiki_page != "":
         wiki_store = WikiStore(data_store)
-        schedule.every(10).minutes.do(wiki_store.save)
+        schedule.every(1).minute.do(wiki_store.save)
 
     # Run all jobs immediately except those that shouldn't be run initially
     [job.run() for job in schedule.get_jobs() if not "no_initial" in job.tags]

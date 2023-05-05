@@ -29,17 +29,22 @@ class WeekdayFlairEnforcerHandler(Handler[Submission]):
     def handle(self, item: Submission) -> None:
         # Check it's the weekday and the post was made on the weekday
         if datetime.now().weekday() != self.weekday or datetime.fromtimestamp(item.created_utc).weekday() != self.weekday:
+            log.debug("Wrong time")
             return
 
         # Check that the post doesn't the flair template ID
-        flair_id = None
-        if not item.link_flair_text is None:  # Posts with no flair have no link_flair_template_id property
-            flair_id = item.link_flair_template_id
-        if flair_id == self.flair_id:
+        if not item.link_flair_text is None and item.link_flair_template_id == self.flair_id: # Posts with no flair have no link_flair_template_id property
+            log.debug("Right flair")
+            return
+
+        # Check that the post isn't already removed
+        if item.removed:
+            log.debug("Already removed")
             return
 
         # Ignore mod posts
-        if reddit().is_mod(item.author):
+        if item.distinguished:
+            log.debug("Mod post")
             return
 
         log.info(f"Illegal weekday flair detected on post {item.fullname}")
@@ -49,7 +54,7 @@ class WeekdayFlairEnforcerHandler(Handler[Submission]):
         if settings.dry_run:
             log.info(f"[DRY RUN: would have removed post {post.fullname}]")
         else:
-            post.remove(mod_note="DRBOT: removed for weekday flair restriction", reason_id="511a2061-fb9b-4f65-a073-7425eb9161e9")  # TBD generalize
+            post.mod.remove(mod_note="DRBOT: removed for weekday flair restriction", reason_id="511a2061-fb9b-4f65-a073-7425eb9161e9")  # TBD generalize
 
         # Modmail the user
         reddit().send_modmail(add_common=False,

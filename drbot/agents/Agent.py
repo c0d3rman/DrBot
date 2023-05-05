@@ -50,6 +50,7 @@ class Agent(ABC, Generic[T]):
         handler.setup(self)
 
     def run(self) -> None:
+        log.debug(f"{self.name} running.")
         items = self.get_items()
         if len(items) == 0:
             return
@@ -61,6 +62,7 @@ class Agent(ABC, Generic[T]):
 
         # Process items
         for item in items:
+            log.debug(f"{self.name} handling item {self.id(item)}")
             for handler in self.handlers.values():
                 handler.handle(item)
         self.data_store["_meta"]["last_processed"] = self.id(item)
