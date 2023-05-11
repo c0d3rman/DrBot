@@ -56,7 +56,7 @@ class WeekdayFlairEnforcerHandler(Handler[Submission]):
             post.mod.remove(mod_note="DRBOT: removed for weekday flair restriction", reason_id="511a2061-fb9b-4f65-a073-7425eb9161e9")  # TBD generalize
 
         # Modmail the user
-        reddit().send_modmail(add_common=False, archive=True,
+        reddit().send_modmail(add_common=False, archive=True, recipient=post.author,
                               subject=f"Your post was removed due to Rule 8: Fresh Friday",
                               body=f"""Hi u/{post.author}, your [post](https://reddit.com{post.permalink}) was removed because of Rule 8: Fresh Friday.
 
