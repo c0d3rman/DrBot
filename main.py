@@ -36,7 +36,7 @@ def main():
     post_agent = PostAgent(data_store)
     post_agent.register(WeekdayFlairEnforcerHandler(flair_id="3674207c-e8cc-11ed-83d0-52d642db35f8", weekday=4))
     schedule.every().friday.at("00:00").do(
-        lambda: schedule.every(5).seconds.until(timedelta(days=1)).do(post_agent.run)).tag("no_initial")
+        lambda: schedule.every(5).seconds.until("23:59").do(post_agent.run)).tag("no_initial")
 
     # Sidebar sync
     sidebar_sync_agent = SidebarSyncAgent(data_store)
