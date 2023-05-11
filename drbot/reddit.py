@@ -74,7 +74,7 @@ class Reddit(praw.Reddit):
         else:
             raise Exception(f"Unknown fullname type: {fullname}")
 
-    def send_modmail(self, subject: str, body: str, recipient: Optional[praw.reddit.models.Redditor | str] = None, add_common: bool = True, **kwargs) -> None:
+    def send_modmail(self, subject: str, body: str, recipient: Optional[praw.reddit.models.Redditor | str] = None, add_common: bool = True, archive: bool = False, **kwargs) -> None:
         """Sends modmail, handling dry_run mode.
         Creates a moderator discussion by default if a recipient is not provided."""
 
@@ -92,7 +92,9 @@ class Reddit(praw.Reddit):
     Subject: "{subject}"
     {body}]""")
         else:
+            log.info(f'Sending modmail {"as mod discussion " if recipient is None else f"to u/{recipient} "}with subject "{subject}"')
             log.debug(f"""Sending modmail:
+    Recipient: {"mod discussion" if recipient is None else f"u/{recipient}"}
     Subject: "{subject}"
     {body}""")
 
@@ -101,7 +103,9 @@ class Reddit(praw.Reddit):
                 trailer = "... [truncated]"
                 body = body[:10000 - len(trailer)] + trailer
 
-            self.sub.modmail.create(subject=subject, body=body, recipient=recipient, **kwargs)
+            modmail = self.sub.modmail.create(subject=subject, body=body, recipient=recipient, **kwargs)
+            if archive:
+                modmail.archive()
 
     def is_mod(self, username: str | praw.reddit.models.Redditor) -> bool:
         """Check if a user is a mod in your sub"""

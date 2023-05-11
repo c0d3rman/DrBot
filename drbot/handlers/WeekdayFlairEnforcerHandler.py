@@ -29,22 +29,21 @@ class WeekdayFlairEnforcerHandler(Handler[Submission]):
     def handle(self, item: Submission) -> None:
         # Check it's the weekday and the post was made on the weekday
         if datetime.now().weekday() != self.weekday or datetime.fromtimestamp(item.created_utc).weekday() != self.weekday:
-            log.debug("Wrong time")
             return
 
-        # Check that the post doesn't the flair template ID
-        if not item.link_flair_text is None and item.link_flair_template_id == self.flair_id: # Posts with no flair have no link_flair_template_id property
-            log.debug("Right flair")
-            return
+        # Check that the post doesn't already have the flair template ID (guarding for no flair)
+        try:
+            if item.link_flair_template_id == self.flair_id:
+                return
+        except AttributeError:
+            pass
 
         # Check that the post isn't already removed
         if item.removed:
-            log.debug("Already removed")
             return
 
         # Ignore mod posts
         if item.distinguished:
-            log.debug("Mod post")
             return
 
         log.info(f"Illegal weekday flair detected on post {item.fullname}")
@@ -57,12 +56,10 @@ class WeekdayFlairEnforcerHandler(Handler[Submission]):
             post.mod.remove(mod_note="DRBOT: removed for weekday flair restriction", reason_id="511a2061-fb9b-4f65-a073-7425eb9161e9")  # TBD generalize
 
         # Modmail the user
-        reddit().send_modmail(add_common=False,
+        reddit().send_modmail(add_common=False, archive=True,
                               subject=f"Your post was removed due to Rule 8: Fresh Friday",
                               body=f"""Hi u/{post.author}, your [post](https://reddit.com{post.permalink}) was removed because of Rule 8: Fresh Friday.
 
 On Fridays, all posts must discuss fresh topics. We encourage posts about religions other than Christianity/Islam/atheism. Banned topics include: problem of evil, Kalam, fine tuning, disciple martyrdom, Quranic miracles, classical theism.
 
 To make a post on Friday, you must flair your post with “Fresh Friday.” If your post was on a fresh topic, please post it again with the correct flair.""")
-
-        # print(f"Your post has forbidden flair: {item.link_flair_text}.\nIt must have this flair: {self.flair_text}")

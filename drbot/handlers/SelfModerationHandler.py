@@ -21,15 +21,18 @@ class SelfModerationHandler(Handler[ModAction]):
 
     def handle(self, item: ModAction) -> None:
         self_moderation = False
-        meta_flair = "b17c1006-ef48-11e1-826b-12313b0ce1e2"
+        meta_flair = "b17c1006-ef48-11e1-826b-12313b0ce1e2"  # TBD make general
 
         if item.action == "removecomment":
             if item._mod == "AutoModerator":
                 return
             post = reddit().comment(item.target_fullname).submission
-            if not post.link_flair_text is None and post.link_flair_template_id == meta_flair:  # Don't check meta threads. TBD make general
-                log.debug(f"Ignoring self-moderation in {item.id} because it's a meta thread.")
-                return
+            try:  # Don't check meta threads, guarding for no flair
+                if post.link_flair_template_id == meta_flair:
+                    log.debug(f"Ignoring self-moderation in {item.id} because it's a meta thread.")
+                    return
+            except AttributeError:
+                pass
             if self.is_self_moderated(item._mod, item.target_fullname):
                 self_moderation = True
         elif item.action in ["approvecomment", "approvelink"]:
@@ -37,16 +40,19 @@ class SelfModerationHandler(Handler[ModAction]):
                 thing = reddit().get_thing(item.target_fullname)
                 if type(thing) is Comment:
                     thing = thing.submission
-                if not thing.link_flair_text is None and thing.link_flair_template_id == meta_flair:  # Don't check meta threads. TBD make general
-                    log.debug(f"Ignoring self-moderation in {item.id} because it's a meta thread.")
-                    return
+                try:  # Don't check meta threads, guarding for no flair
+                    if thing.link_flair_template_id == meta_flair:
+                        log.debug(f"Ignoring self-moderation in {item.id} because it's a meta thread.")
+                        return
+                except AttributeError:
+                    pass
                 self_moderation = True
 
         if self_moderation:
             log.warning(f"Self-moderation detected by u/{item._mod} in {item.target_fullname} on {datetime.fromtimestamp(item.created_utc)}")
             if settings.self_moderation_modmail:
                 reddit().send_modmail(subject=f"Self-moderation by u/{item._mod}",
-                                    body=f"On {datetime.fromtimestamp(item.created_utc)}, u/{item._mod} {'removed' if item.action == 'removecomment' else 'approved'} [this {'comment' if item.target_fullname.startswith('t1_') else 'post'}](https://reddit.com{item.target_permalink}) despite being involved upstream of it.")
+                                      body=f"On {datetime.fromtimestamp(item.created_utc)}, u/{item._mod} {'removed' if item.action == 'removecomment' else 'approved'} [this {'comment' if item.target_fullname.startswith('t1_') else 'post'}](https://reddit.com{item.target_permalink}) despite being involved upstream of it.")
 
     def is_self_moderated(self, mod: str, fullname: str, skip_first: bool = True):
         """Scans a given object and its parents for any instances of the given mod as an author."""
