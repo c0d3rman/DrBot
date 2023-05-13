@@ -8,7 +8,6 @@ Free to use by anyone for any reason (licensed under CC0)
 import logging
 import schedule
 import time
-from datetime import timedelta
 from drbot import settings, log, reddit
 from drbot.stores import *
 from drbot.agents import *
@@ -45,6 +44,11 @@ def main():
     # Star User flair enforcement
     user_flair_agent = UserFlairAgent(data_store, restricted_phrase="⭐", permitted_css_class="staruser")
     schedule.every(1).hour.do(user_flair_agent.run)
+
+    # Modmail mobile link fixing
+    archived_modmail_agent = ModmailAgent(data_store, state="archived")
+    archived_modmail_agent.register(ModmailMobileLinkHandler())
+    schedule.every(5).seconds.do(archived_modmail_agent.run)
 
     # Load from wiki last to load data into the existing agents' data stores
     if settings.wiki_page != "":

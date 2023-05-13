@@ -16,8 +16,8 @@ class PostAgent(HandlerAgent[Submission]):
             #   2. We only get the first post in one request, then get the second post in the next request
             if self.id(item) <= self.data_store["_meta"]["last_processed"]:
                 break
-            items.insert(0, item)  # Build up list so it's sorted earliest to latest
-        return items
+            items.append(item)
+        return list(reversed(items))  # Process from earliest to latest
 
     def id(self, item: Submission) -> str:
         return datetime.fromtimestamp(item.created_utc)
