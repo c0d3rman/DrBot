@@ -1,5 +1,6 @@
 from praw.models import ModmailConversation
 from datetime import datetime
+from pytz import UTC
 from drbot import log, reddit
 from drbot.agents import HandlerAgent
 from drbot.stores import DataStore
@@ -11,7 +12,7 @@ class ModmailAgent(HandlerAgent[ModmailConversation]):
     def __init__(self, data_store: DataStore, state: str = "all", name: str | None = None) -> None:
         self.state = state  # Must happen first since get_latest_item is called in the super-constructor
         super().__init__(data_store, name)
-        self.data_store["_meta"]["last_processed_time"] = datetime.min  # Must happen last so our name is initialized
+        self.data_store["_meta"]["last_processed_time"] = UTC.localize(datetime.min)  # Must happen last so our name is initialized
 
     def get_items(self) -> list[ModmailConversation]:
         # This endpoint doesn't have a 'before' parameter for some reason, so we do it manually
@@ -20,9 +21,10 @@ class ModmailAgent(HandlerAgent[ModmailConversation]):
             if self.id(item) == self.data_store["_meta"]["last_processed"]:
                 break
             # Safety check to make sure we don't go back in time somehow, which happened once.
-            if item.messages[0].date < self.data_store["_meta"]["last_processed_time"]:
+            d = datetime.fromisoformat(item.messages[0].date)
+            if d < self.data_store["_meta"]["last_processed_time"]:
                 break
-            self.data_store["_meta"]["last_processed_time"] = item.messages[0].date
+            self.data_store["_meta"]["last_processed_time"] = d
             items.append(item)
         return list(reversed(items))  # Process from earliest to latest
 
