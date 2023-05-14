@@ -27,9 +27,8 @@ class DataStore(dict):
         return json.dumps(self, default=DataStore._json_encoder)
 
     def from_json(self, s: str) -> None:
-        """Initialize the DataStore from a JSON dump (overwrites whatever's already there)."""
+        """Initialize the DataStore from a JSON dump (keeps slices that are already there if they're not on the wiki)."""
 
-        self.clear()
         for k, v in json.loads(s, object_hook=DataStore._json_decoder).items():
             self[k] = v
         assert "_meta" in self

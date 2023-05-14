@@ -26,7 +26,7 @@ class WikiStore:
             log.error(f"Data is too long to be written to wiki! ({len(dump)}/{WikiStore.MAX_PAGE_SIZE} characters.) Check log for full data.")
             log.debug(dump)
             return
-        
+
         # Don't write if there's no change
         try:
             data = reddit().sub.wiki[WikiStore.DATA_PAGE].content_md
@@ -37,7 +37,7 @@ class WikiStore:
             if data == dump:
                 log.debug("Not saving to wiki because it's already identical to what we would save.")
                 return
-        
+
         log.info("Saving data to wiki.")
 
         if settings.dry_run:
