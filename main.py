@@ -29,7 +29,6 @@ def main():
     modlog_agent.register(SelfModerationHandler())
     modlog_agent.register(AdminHandler())
     schedule.every(5).seconds.do(modlog_agent.run)
-    schedule.every().hour.do(points_handler.scan_all)
 
     # Post agent
     post_agent = PostAgent(data_store)
@@ -41,14 +40,17 @@ def main():
     sidebar_sync_agent = SidebarSyncAgent(data_store)
     schedule.every(1).hour.do(sidebar_sync_agent.run)
 
-    # Star User flair enforcement
-    user_flair_agent = UserFlairAgent(data_store, restricted_phrase="⭐", permitted_css_class="staruser")
-    schedule.every(1).hour.do(user_flair_agent.run)
-
     # Modmail mobile link fixing
     archived_modmail_agent = ModmailAgent(data_store, state="archived")
     archived_modmail_agent.register(ModmailMobileLinkHandler())
     schedule.every(5).seconds.do(archived_modmail_agent.run)
+
+    # Star User flair enforcement
+    user_flair_agent = UserFlairAgent(data_store, restricted_phrase="⭐", permitted_css_class="staruser")
+    schedule.every(1).hour.do(user_flair_agent.run)
+
+    # Periodic scan of points (scheduled last so other stuff happens first)
+    schedule.every().hour.do(points_handler.scan_all)
 
     # Load from wiki last to load data into the existing agents' data stores
     if settings.wiki_page != "":
