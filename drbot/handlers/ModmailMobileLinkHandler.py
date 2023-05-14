@@ -34,3 +34,4 @@ class ModmailMobileLinkHandler(Handler[ModmailConversation]):
 {body}]""")
         else:
             item.reply(author_hidden=True, body=body)
+            item.archive()
