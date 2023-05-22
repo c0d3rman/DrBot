@@ -1,3 +1,7 @@
+import re
+import os
+import urllib.request
+from urllib.parse import urlparse
 from praw.models.reddit import widgets
 from drbot import settings, log, reddit
 from drbot.agents import Agent
@@ -7,6 +11,8 @@ from drbot.stores import DataStore
 class SidebarSyncAgent(Agent):
     """Takes your new reddit sidebar and changes the old reddit sidebar to match it."""
     SIDEBAR_WIKI = "config/sidebar"
+    CSS_START_STR = "/* DRBOT START - do not edit */\n"
+    CSS_END_STR = "\n/* DRBOT END - do not edit */"
 
     def __init__(self, data_store: DataStore, name: str | None = None) -> None:
         super().__init__(data_store, name)
@@ -24,7 +30,6 @@ class SidebarSyncAgent(Agent):
     def run(self) -> None:
         markdown = self.get_markdown().strip()
         current = reddit().sub.wiki[SidebarSyncAgent.SIDEBAR_WIKI].content_md.strip()
-
         if markdown == current:
             return
 
@@ -57,14 +62,48 @@ class SidebarSyncAgent(Agent):
         bar.append(f"#### {settings.subreddit}\n\n{id_card.description}")  # TBD: special styling
 
         # Sidebar widgets
+        image_i = 1
+        drbot_css = ""
         for widget in reddit().sub.widgets.sidebar:
             if type(widget) is widgets.RulesWidget:
                 bar.append("#### Rules\n\n" + "\n\n".join(f"{i+1}. **{rule['shortName']}**  \n{rule['description']}" for i, rule in enumerate(widget.data)))
             elif type(widget) is widgets.TextArea:
                 bar.append(f"#### {widget.shortName}\n\n{widget.text}")
+            elif type(widget) is widgets.ImageWidget:  # Due to CSS restrictions, this only uses the first image from a random image widget
+                # Download first image from new reddit and upload to old reddit
+                image = widget.data[0]
+                name = f"drbot-image-{image_i}"
+                downloadpath = f"data/{os.path.basename(urlparse(image.url).path)}"
+                uploadpath, _ = urllib.request.urlretrieve(image.url, downloadpath)
+                reddit().sub.stylesheet.upload(name=name, image_path=uploadpath)
+
+                # Create widget
+                bar.append(f"#### {widget.shortName}\n\n[](#{name})\n&nbsp;")
+
+                # Add the image widget CSS
+                drbot_css += f"""a[href="#{name}"] {{
+    content: url('%%{name}%%');
+    width: 100%;
+    height: auto;
+    font-size: 0;
+}}
+"""
+
+                # Increment image counter to avoid conflicts with multiple image widgets
+                image_i += 1
             else:
-                # TBD: make a single image widget + random image widget - https://www.reddit.com/r/csshelp/wiki/snippets/#wiki_random_image_above_sidebar
-                log.warning(f"{type(widget).__name__} ({widget.shortName}) not supported by SidebarSyncAgent. Skipping.")
+                log.warning(f"Widget type {type(widget).__name__} ({widget.shortName}) not supported by SidebarSyncAgent. Skipping.")
+
+        # If we need to modify CSS, do so here
+        drbot_css = drbot_css.strip()
+        if drbot_css != "":
+            curr_css = reddit().sub.stylesheet().stylesheet
+            result = re.search(fr"^(.*{re.escape(SidebarSyncAgent.CSS_START_STR)}).*?({re.escape(SidebarSyncAgent.CSS_END_STR)}.*)$", curr_css, re.DOTALL)
+            if result:
+                new_css = result.group(1) + drbot_css + result.group(2)
+            else:
+                new_css = f"{curr_css}\n\n{SidebarSyncAgent.CSS_START_STR}{drbot_css}{SidebarSyncAgent.CSS_END_STR}"
+            reddit().sub.stylesheet.update(new_css, reason="Automated DRBOT update (image widget sync)")
 
         # TBD make non-manual
         bar.append("""#### Filter posts by subject

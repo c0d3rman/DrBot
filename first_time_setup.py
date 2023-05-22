@@ -40,6 +40,7 @@ Content-Length: {len(body)}
     scopes = [
         "flair",  # For Fresh Friday flair.
         "identity",  # Basic - know the username of the account we log into.
+        "modconfig",  # For uploading images to the sidebar.
         "modcontributors",  # For banning users.
         "modflair",  # For managing flair (Fresh Friday + star user).
         "modlog",  # For reading the modlog.
