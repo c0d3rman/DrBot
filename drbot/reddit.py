@@ -3,6 +3,7 @@ import prawcore
 import random
 from typing import Optional
 import logging
+from threading import RLock
 from drbot import settings, log
 from drbot.log import ModmailLoggingHandler, TemplateLoggingFormatter, BASE_FORMAT
 
@@ -39,9 +40,16 @@ class InfiniteRetryStrategy(prawcore.sessions.RetryStrategy):
 class Reddit(praw.Reddit):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.lock = RLock()
         self._core._retry_strategy_class = InfiniteRetryStrategy
 
+    def __enter__(self):
+        self.lock.acquire()
+        return super().__enter__()
 
+    def __exit__(self, *_args):
+        self.lock.release()
+        return super().__exit__(*_args)
 
     @property
     def sub(self):
