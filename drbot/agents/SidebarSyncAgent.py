@@ -3,6 +3,7 @@ import os
 import urllib.request
 from urllib.parse import urlparse
 from praw.models.reddit import widgets
+from praw.exceptions import RedditAPIException
 from drbot import settings, log, reddit
 from drbot.agents import Agent
 from drbot.stores import DataStore
@@ -28,7 +29,9 @@ class SidebarSyncAgent(Agent):
                     reason="Automated page for DRBOT")
 
     def run(self) -> None:
-        markdown = self.get_markdown().strip()
+        markdown = self.get_markdown()
+        if markdown is None:
+            return
         current = reddit().sub.wiki[SidebarSyncAgent.SIDEBAR_WIKI].content_md.strip()
         if markdown == current:
             return
@@ -45,7 +48,7 @@ class SidebarSyncAgent(Agent):
         else:
             reddit().sub.wiki[SidebarSyncAgent.SIDEBAR_WIKI].edit(content=markdown, reason="Automated sidebar sync by DRBOT")
 
-    def get_markdown(self) -> str:
+    def get_markdown(self) -> str | None:
         """Get the new reddit sidebar represented as markdown."""
 
         bar = []
@@ -103,7 +106,12 @@ class SidebarSyncAgent(Agent):
                 new_css = result.group(1) + drbot_css + result.group(2)
             else:
                 new_css = f"{curr_css}\n\n{SidebarSyncAgent.CSS_START_STR}{drbot_css}{SidebarSyncAgent.CSS_END_STR}"
-            reddit().sub.stylesheet.update(new_css, reason="Automated DRBOT update (image widget sync)")
+            try:
+                reddit().sub.stylesheet.update(new_css, reason="Automated DRBOT update (image widget sync)")
+            except RedditAPIException:
+                log.error("Reddit rejected invalid CSS upload. This is either due to a CSS error in DRBOT, or your sub's CSS is invalid somehow (which usually happens because of a deleted image).")
+                log.debug(new_css)
+                return
 
         # TBD make non-manual
         bar.append("""#### Filter posts by subject
@@ -111,4 +119,4 @@ class SidebarSyncAgent(Agent):
 [Christianity](http://ch.reddit.com/r/DebateReligion/#ch) [Atheism](http://at.reddit.com/r/DebateReligion/#at) [Islam](http://iz.reddit.com/r/DebateReligion/#iz) [Theism](http://ts.reddit.com/r/DebateReligion/#ts) [Abrahamic](http://ab.reddit.com/r/DebateReligion/#ab) [Buddhism](http://bu.reddit.com/r/DebateReligion/#bu) [Hinduism](http://hz.reddit.com/r/DebateReligion/#hz) [Judaism](http://jz.reddit.com/r/DebateReligion/#jz) [Bah](http://ba.reddit.com/r/DebateReligion/#ba) [Meta](http://me.reddit.com/r/DebateReligion/#me) [Paganism](http://pa.reddit.com/r/DebateReligion/#pa) [All](http://reddit.com/r/DebateReligion/#all)
 """)
 
-        return "\n\n".join(bar)
+        return "\n\n".join(bar).strip()
