@@ -1,7 +1,7 @@
 from __future__ import annotations
 import praw
 from praw.models import ModAction, Comment
-from datetime import datetime
+from datetime import datetime, timezone
 from drbot import settings, log, reddit
 from drbot.agents import Agent
 from drbot.handlers import Handler
@@ -49,10 +49,10 @@ class SelfModerationHandler(Handler[ModAction]):
                 self_moderation = True
 
         if self_moderation:
-            log.warning(f"Self-moderation detected by u/{item._mod} in {item.target_fullname} on {datetime.fromtimestamp(item.created_utc)}")
+            log.warning(f"Self-moderation detected by u/{item._mod} in {item.target_fullname} on {datetime.fromtimestamp(item.created_utc, timezone.utc)}")
             if settings.self_moderation_modmail:
                 reddit().send_modmail(subject=f"Self-moderation by u/{item._mod}",
-                                      body=f"On {datetime.fromtimestamp(item.created_utc)}, u/{item._mod} {'removed' if item.action == 'removecomment' else 'approved'} [this {'comment' if item.target_fullname.startswith('t1_') else 'post'}](https://reddit.com{item.target_permalink}) despite being involved upstream of it.")
+                                      body=f"On {datetime.fromtimestamp(item.created_utc, timezone.utc)}, u/{item._mod} {'removed' if item.action == 'removecomment' else 'approved'} [this {'comment' if item.target_fullname.startswith('t1_') else 'post'}](https://reddit.com{item.target_permalink}) despite being involved upstream of it.")
 
     def is_self_moderated(self, mod: str, fullname: str, skip_first: bool = True):
         """Scans a given object and its parents for any instances of the given mod as an author."""

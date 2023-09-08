@@ -1,7 +1,7 @@
 from __future__ import annotations
 import re
-from datetime import datetime
 import urllib.request
+from datetime import datetime, timezone
 import json
 from praw.models import ModAction
 from drbot import settings, log, reddit
@@ -13,7 +13,7 @@ class AdminHandler(Handler[ModAction]):
 
     def handle(self, item: ModAction) -> None:
         if item._mod == "Anti-Evil Operations":
-            log.warning(f"Reddit admins took action {item.action} on item {item.target_fullname} on {datetime.fromtimestamp(item.created_utc)}")
+            log.warning(f"Reddit admins took action {item.action} on item {item.target_fullname} on {datetime.fromtimestamp(item.created_utc, timezone.utc)}")
 
             if item.action == 'removecomment':
                 kind = "comment"
@@ -28,7 +28,7 @@ class AdminHandler(Handler[ModAction]):
                 return
 
             if settings.admin_modmail:
-                message = f"On {datetime.fromtimestamp(item.created_utc)}, reddit's Anti-Evil Operations removed a {kind} in your sub."
+                message = f"On {datetime.fromtimestamp(item.created_utc, timezone.utc)}, reddit's Anti-Evil Operations removed a {kind} in your sub."
 
                 data = json.loads(urllib.request.urlopen(
                     f"https://api.pushshift.io/reddit/{'comment' if kind == 'comment' else 'submission'}/search?ids={item.target_fullname[3:]}&limit=1"
