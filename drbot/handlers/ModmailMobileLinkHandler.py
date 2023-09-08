@@ -24,7 +24,7 @@ class ModmailMobileLinkHandler(Handler[ModmailConversation]):
 
         result = re.search(r"\nOriginal (post|comment): (/r/.+)$", item.messages[0].body_markdown)
         if result is None:
-            log.warning(f"Unknown removal message format for modmail {item.id} - this shouldn't happen.")
+            log.error(f"Unknown removal message format for modmail {item.id} - this shouldn't happen.")
             return
 
         log.info(f"Posting mobile link for modmail {item.id}.")
