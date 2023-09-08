@@ -4,3 +4,4 @@ from drbot.handlers.PointsHandler import PointsHandler
 from drbot.handlers.SelfModerationHandler import SelfModerationHandler
 from drbot.handlers.WeekdayFlairEnforcerHandler import WeekdayFlairEnforcerHandler
 from drbot.handlers.ModmailMobileLinkHandler import ModmailMobileLinkHandler
+from drbot.handlers.ViolationsNotifierHandler import ViolationsNotifierHandler

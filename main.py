@@ -40,9 +40,10 @@ def main():
     sidebar_sync_agent = SidebarSyncAgent(data_store)
     schedule.every(1).hour.do(sidebar_sync_agent.run)
 
-    # Modmail mobile link fixing
+    # Archived modmail agent
     archived_modmail_agent = ModmailAgent(data_store, state="archived")
     archived_modmail_agent.register(ModmailMobileLinkHandler())
+    archived_modmail_agent.register(ViolationsNotifierHandler(points_handler))
     schedule.every(5).seconds.do(archived_modmail_agent.run)
 
     # Star User flair enforcement
