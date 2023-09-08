@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Optional
 from praw.models import Submission
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from drbot import settings, log, reddit
 from drbot.agents import Agent
 from drbot.handlers import Handler
@@ -28,7 +28,11 @@ class WeekdayFlairEnforcerHandler(Handler[Submission]):
 
     def handle(self, item: Submission) -> None:
         # Check it's the weekday and the post was made on the weekday
-        if datetime.now().weekday() != self.weekday or datetime.fromtimestamp(item.created_utc).weekday() != self.weekday:
+        if datetime.now(timezone.utc).weekday() != self.weekday or datetime.fromtimestamp(item.created_utc, timezone.utc).weekday() != self.weekday:
+            return
+        
+        # Check that the post is from this week
+        if abs(datetime.now(timezone.utc) - datetime.fromtimestamp(item.created_utc, timezone.utc)) > timedelta(days=1):
             return
 
         # Check that the post doesn't already have the flair template ID (guarding for no flair)
@@ -46,7 +50,7 @@ class WeekdayFlairEnforcerHandler(Handler[Submission]):
         if item.distinguished:
             return
 
-        log.info(f"Illegal weekday flair detected on post {item.fullname}")
+        log.info(f"Removing post {item.fullname} due to illegal weekday flair.")
 
         # Remove the post
         post = reddit().submission(item.id)
@@ -54,6 +58,11 @@ class WeekdayFlairEnforcerHandler(Handler[Submission]):
             log.info(f"[DRY RUN: would have removed post {post.fullname}]")
         else:
             post.mod.remove(mod_note="DRBOT: removed for weekday flair restriction", reason_id="511a2061-fb9b-4f65-a073-7425eb9161e9")  # TBD generalize
+
+        # Make sure the user still exists
+        if post.author is None:
+            log.warning(f"Couldn't message the author of post {item.fullname} about the weekday removal because they don't exist. They may have deleted their account.")
+            return
 
         # Modmail the user
         reddit().send_modmail(add_common=False, archive=True, recipient=post.author,

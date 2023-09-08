@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timezone
 from praw.models import Submission
 from drbot import reddit
 from drbot.agents import HandlerAgent
@@ -20,7 +20,7 @@ class PostAgent(HandlerAgent[Submission]):
         return list(reversed(items))  # Process from earliest to latest
 
     def id(self, item: Submission) -> str:
-        return datetime.fromtimestamp(item.created_utc)
+        return datetime.fromtimestamp(item.created_utc, timezone.utc)
 
     def get_latest_item(self) -> list[Submission]:
         return next(reddit().sub.new(limit=1))
