@@ -50,9 +50,6 @@ def main():
     user_flair_agent = UserFlairAgent(data_store, restricted_phrase="⭐", permitted_css_class="staruser")
     schedule.every(1).hour.do(user_flair_agent.run)
 
-    # Periodic scan of points (scheduled last so other stuff happens first)
-    schedule.every().hour.do(points_handler.scan_all)
-
     # Load from wiki last to load data into the existing agents' data stores
     if settings.wiki_page != "":
         wiki_store = WikiStore(data_store)
