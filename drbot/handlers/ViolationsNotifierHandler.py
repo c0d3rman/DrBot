@@ -43,7 +43,7 @@ class ViolationsNotifierHandler(Handler[ModmailConversation]):
             return
 
         # Prepare modmail message
-        violation_string = closest_interval.to_string(self.points_handler, include_points=False)
+        violation_string = closest_interval.to_string(self.points_handler, include_points=False, relevant_only=True)
         if len(violation_string.strip()) == 0:
             log.info(f"Skipping violations notice for banned user u/{username} because they have no relevant violations on record.")
             return

@@ -55,12 +55,16 @@ class ViolationInterval:
         self.removals = removals
         self.ban = ban
 
-    def to_string(self, points_handler: PointsHandler, include_points: bool = True, cache: bool = False) -> str:
+    def to_string(self, points_handler: PointsHandler, include_points: bool = True, relevant_only: bool = False, cache: bool = False) -> str:
         """Turn a ViolationInterval into a human-readable string.
         Ends with a newline (unless there are no violations).
-        You can choose whether the points for each violation should be shown or not with include_points."""
+        You can choose whether the points for each violation should be shown or not with include_points.
+        If relevant_only is true, only shows violations which contributed at least 1 point."""
 
         message = ""
+        removals = self.removals
+        if relevant_only:
+            removals = [r for r in removals if points_handler.get_point_cost(r) > 0]
         for removal in self.removals:
             fullname = removal.target_id
             target = points_handler.get_thing(fullname, cache=cache)
@@ -285,7 +289,7 @@ class PointsHandler(Handler[ModAction]):
             if settings.dry_run:
                 log.info(f"[DRY RUN: would have banned u/{username} for {'TBD - duration'}.]")
             else:
-                raise NotImplementedError() # TBD
+                raise NotImplementedError()  # TBD
 
         # Handle modmail notification
         if settings.autoban_mode in [1, 2]:
@@ -295,7 +299,7 @@ class PointsHandler(Handler[ModAction]):
             violations = self.get_violations(username, cache=cache)
             interval = violations[-1]
             message = f"u/{username}'s violations have reached {self.get_user_total(username, cache=cache)} points and passed the {settings.point_threshold}-point threshold:\n\n"
-            message += interval.to_string(self, cache=cache)
+            message += interval.to_string(self, cache=cache, relevant_only=True)
             message += f"\n{'A' if didBan else 'No'} ban has been issued."
             if not didBan:
                 message += f" You can ban them [here](https://www.reddit.com/r/{settings.subreddit}/about/banned)."
