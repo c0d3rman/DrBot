@@ -94,11 +94,6 @@ praw_log_file = ""
 # It won't take any actions on Reddit and will log what it would have done instead.
 dry_run = false
 
-# Safe mode - do greedy safety checks instead of lazy ones.
-# e.g. check for comment re-approval on every operation instead of only periodically and when needed.
-# Will significantly slow down the bot and increase the traffic from your bot to reddit.
-safe_mode = false
-
 # By default, the bot will not ban mods or track their points.
 # You can force it to include mods by setting this to false.
 # This may cause permissions issues with your sub - mods can't always ban other mods.
