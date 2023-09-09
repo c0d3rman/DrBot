@@ -151,22 +151,23 @@ def login() -> praw.Reddit:
         raise Exception(f"r/{settings.subreddit} is banned.")
 
     # Set up logging to modmail
-    modmail_handler = ModmailLoggingHandler(_reddit)
-    modmail_handler.setFormatter(TemplateLoggingFormatter(fmt=BASE_FORMAT, template={
-        logging.ERROR: """DRBOT has encountered a non-fatal error:
+    if settings.modmail_errors:
+        modmail_handler = ModmailLoggingHandler(_reddit)
+        modmail_handler.setFormatter(TemplateLoggingFormatter(fmt=BASE_FORMAT, template={
+            logging.ERROR: """DRBOT has encountered a non-fatal error:
 
-```
-{log}
-```
+    ```
+    {log}
+    ```
 
-DRBOT is still running. Check the log for more details.""",
-        logging.CRITICAL: """DRBOT has encountered a fatal error and crashed:
+    DRBOT is still running. Check the log for more details.""",
+            logging.CRITICAL: """DRBOT has encountered a fatal error and crashed:
 
-```
-{log}
-```"""}))
-    modmail_handler.setLevel(logging.ERROR)
-    log.addHandler(modmail_handler)
+    ```
+    {log}
+    ```"""}))
+        modmail_handler.setLevel(logging.ERROR)
+        log.addHandler(modmail_handler)
 
 
 reddit.login = login

@@ -142,3 +142,6 @@ self_moderation_modmail = false
 
 # Whether to send modmail when admin action is detected (otherwise it's just logged).
 admin_modmail = true
+
+# Whether to send modmail when errors occur (recommended)
+modmail_errors = true
