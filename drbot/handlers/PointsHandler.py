@@ -9,6 +9,15 @@ from drbot.agents import Agent
 from drbot.handlers import Handler
 
 
+def escape_markdown(text: str | None):
+    """Helper to escape markdown, since apparently no one but python-telegram-bot has standardized one of these and I'm not making that a dependency."""
+
+    if text is None:
+        return None
+    escape_chars = r"\_*[]()~`>#+-=|{}.!"
+    return re.sub(f"([{re.escape(escape_chars)}])", r"\\\1", text)
+
+
 class Removal:
     """An object which tracks the modnotes associated with a removal:
     one for the removal itself and one for the removal reason."""
@@ -71,7 +80,7 @@ class ViolationInterval:
             if include_points:
                 points = points_handler.get_point_cost(removal, cache=cache)
                 message += f" ({points} point{'s' if points > 1 else ''})"
-            message += f": [{text}]({target.permalink}) ({target.mod_reason_title})\n"
+            message += f": [{escape_markdown(text)}]({target.permalink}) ({escape_markdown(target.mod_reason_title)})\n"
         return message
 
 
@@ -288,6 +297,8 @@ class PointsHandler(Handler[ModAction]):
             message = f"u/{username}'s violations have reached {self.get_user_total(username, cache=cache)} points and passed the {settings.point_threshold}-point threshold:\n\n"
             message += interval.to_string(self, cache=cache)
             message += f"\n{'A' if didBan else 'No'} ban has been issued."
+            if not didBan:
+                message += f" You can ban them [here](https://www.reddit.com/r/{settings.subreddit}/about/banned)."
 
             # Send modmail
             reddit().send_modmail(subject=f"{'Ban' if didBan else 'Point'} alert for u/{username}", body=message)
