@@ -92,6 +92,12 @@ class PointsHandler(Handler[ModAction]):
     def setup(self, agent: Agent[ModAction]) -> None:
         super().setup(agent)
         self.point_map = PointMap()
+
+        # Init data store
+        if not "outstanding_alerts" in self.data_store:
+            self.data_store["outstanding_alerts"] = {}
+
+        # Init caches
         self.cache_violations: dict[str, list[ViolationInterval]] = {}
         self.cache_points: dict[Removal, int] = {}
         self.cache_scans: set[str] = set()
@@ -101,6 +107,37 @@ class PointsHandler(Handler[ModAction]):
         # If a relevant action like a removal or approval happens, scan the involved user
         if item.action in ['removecomment', 'removelink', 'addremovalreason', 'approvelink', 'approvecomment']:
             self.scan(item.target_author, cache=True)
+        # If a user is banned, we want to purge them from the outstanding alerts and sunset their point alert.
+        if item.action == 'banuser':
+            if not item.target_author in self.data_store["outstanding_alerts"]:
+                return
+            if not self.valid_user(item.target_author) is None:
+                self.clear_user(item.target_author)
+                return
+
+            # Fetch the most recent ban.
+            last_ban = next(reddit().sub.mod.notes.redditors(item.target_author, all_notes=False, params={"filter": "BAN"}))
+            if last_ban is None:
+                log.error(f"Modlog reported that u/{item.target_author} was banned, but we could not find the corresponding ban mod note. This could lead to point alerts no longer being sent for this user.")
+                return
+
+            # Make sure we haven't already seen this ban somehow.
+            if self.data_store["outstanding_alerts"][item.target_author]["ban"] == last_ban.id:
+                log.info(f"We've already seen ban {last_ban.id} for u/{item.target_author}, which is strange. Taking no action.")
+                return
+
+            # Send a reply to the point alert and archive it.
+            point_alert = reddit().sub.modmail.conversation(self.data_store["outstanding_alerts"][item.target_author]["modmail"])
+            message = f"u/{item.target_author} has been banned."
+            if settings.dry_run:
+                log.info(f"""[DRY RUN: would have sent the following reply to modmail {point_alert.id}:
+    {message}]""")
+            else:
+                item.reply(author_hidden=True, body=message)
+                item.archive()
+
+            # Purge data.
+            del self.data_store["outstanding_alerts"][item.target_author]
 
     def start_run(self) -> None:
         # Invalidate all our caches
@@ -118,6 +155,25 @@ class PointsHandler(Handler[ModAction]):
         if cache:
             self.cache_items[id] = item
         return item
+
+    def valid_user(self, username: str) -> str | None:
+        """Check if a user is a valid target for PointsHandler -
+        meaning they exist, aren't deleted, and aren't a mod (if the setting for that is enabled).
+        Returns None if valid, or a string with the reason if invalid."""
+
+        if username == "[deleted]":
+            return "deleted user"
+        if not reddit().user_exists(username):
+            return "account doesn't exist anymore"
+        if settings.exclude_mods and reddit().is_mod(username):
+            return "user is a mod"
+        return None
+
+    def clear_user(self, username: str) -> None:
+        """Helper to clear the outstanding alert data of a user (if present)."""
+
+        if username in self.data_store["outstanding_alerts"]:
+            del self.data_store["outstanding_alerts"]
 
     def get_violations(self, username: str, exclude_automod: bool = True, cache: bool = False) -> list[ViolationInterval]:
         """Gather all of a user's removals and bans, accounting for things that were later reapproved.
@@ -245,19 +301,11 @@ class PointsHandler(Handler[ModAction]):
                 return
             self.cache_scans.add(username)
 
-        # Skip u/[deleted]
-        if username == "[deleted]":
-            log.debug(f"Skipping u/[deleted].")
-            return
-
-        # Check if the user's account was deleted/suspended
-        if not reddit().user_exists(username):
-            log.debug(f"u/{username}'s account doesn't exist anymore; skipping.")
-            return
-
-        # If exclude_mods is on, check if the user is a mod
-        if settings.exclude_mods and reddit().is_mod(username):
-            log.debug(f"u/{username} is a mod; skipping.")
+        # Make sure the user is valid, and clear their data if they're not
+        reason = self.valid_user(username)
+        if not reason is None:
+            log.debug(f"Skipping u/{username} and clearing record: {reason}.")
+            self.clear_user(username)
             return
 
         log.debug(f"Scanning u/{username}.")
@@ -279,7 +327,7 @@ class PointsHandler(Handler[ModAction]):
         # Double check that the user isn't already banned (though we should have seen it in the mod notes if they were)
         if next(reddit().sub.banned(username), None) is not None:
             log.info(f"u/{username} is already banned; skipping action.")
-            return False
+            return
 
         # Handle autoban
         didBan = False
@@ -293,10 +341,18 @@ class PointsHandler(Handler[ModAction]):
 
         # Handle modmail notification
         if settings.autoban_mode in [1, 2]:
+            # Get the most recent ban ID (or "" if there was none) for tracking purposes
+            violations = self.get_violations(username, cache=cache)
+            last_ban_id = "" if len(violations) == 1 else violations[-2].ban.id
+
+            # Make sure we haven't sent this alert already for a previous removal
+            if username in self.data_store["outstanding_alerts"] and self.data_store["outstanding_alerts"][username]["ban"] == last_ban_id:
+                log.debug(f"Skipping modmail action for u/{username} because we've done it already for a past removal and they haven't been banned since.")
+                return
+
             log.info(f"Sending modmail to mods about u/{username} for passing the point threshold.")
 
             # Prepare modmail message
-            violations = self.get_violations(username, cache=cache)
             interval = violations[-1]
             message = f"u/{username}'s violations have reached {self.get_user_total(username, cache=cache)} points and passed the {settings.point_threshold}-point threshold:\n\n"
             message += interval.to_string(self, cache=cache, relevant_only=True)
@@ -305,6 +361,7 @@ class PointsHandler(Handler[ModAction]):
                 message += f" You can ban them [here](https://www.reddit.com/r/{settings.subreddit}/about/banned)."
 
             # Send modmail
-            reddit().send_modmail(subject=f"{'Ban' if didBan else 'Point'} alert for u/{username}", body=message)
+            modmail = reddit().send_modmail(subject=f"{'Ban' if didBan else 'Point'} alert for u/{username}", body=message)
 
-        return True
+            # Record the fact that we sent this alert, so we don't send another one for the next removal
+            self.data_store["outstanding_alerts"][username] = {"ban": last_ban_id, "modmail": modmail.id}
