@@ -2,6 +2,7 @@ import praw
 import prawcore
 import random
 from typing import Optional
+from uuid import uuid4
 import logging
 from drbot import settings, log
 from drbot.log import ModmailLoggingHandler, TemplateLoggingFormatter, BASE_FORMAT
@@ -40,8 +41,6 @@ class Reddit(praw.Reddit):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._core._retry_strategy_class = InfiniteRetryStrategy
-
-
 
     @property
     def sub(self):
@@ -91,6 +90,10 @@ class Reddit(praw.Reddit):
             log.info(f"""[DRY RUN: would have sent the following modmail:
     Subject: "{subject}"
     {body}]""")
+             # Create a fake modmail to return so as to not break callers that need one in dry run mode
+            fake_modmail = lambda: None
+            fake_modmail.id = f"fakeid_{uuid4().hex}"
+            return fake_modmail
         else:
             log.info(f'Sending modmail {"as mod discussion " if recipient is None else f"to u/{recipient} "}with subject "{subject}"')
             log.debug(f"""Sending modmail:
