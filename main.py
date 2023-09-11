@@ -64,7 +64,7 @@ def main():
     while True:
         schedule.run_pending()
         t = schedule.idle_seconds()
-        if t > 0:
+        if not t is None and t > 0:
             time.sleep(t)
 
 
