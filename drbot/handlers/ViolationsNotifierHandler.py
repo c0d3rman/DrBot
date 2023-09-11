@@ -23,6 +23,13 @@ class ViolationsNotifierHandler(Handler[ModmailConversation]):
             return
         if not re.match(fr"^u/[^ ]+ is (?:temporarily|permanently) banned from r/{settings.subreddit}$", item.subject, re.IGNORECASE):
             return
+        
+        # Make sure we haven't already left a violations notice on this conversation.
+        # Right now it's done by checking if we participated anywhere but the first message of the thread, but ideally we'd want a more targeted way to do this (since other DRBOT modules might also leave messages).
+        me = reddit().me
+        if item.num_messages > 1 and any(m.author == me for m in item.messages):
+            log.debug(f"Not sending a violations notice to u/{item.participant} on modmail {item.id} since we already sent one.")
+            return
 
         # Make sure the user isn't muted, since for some reason reddit freaks out if we try to message them
         if len(reddit().request(method="GET", path="/r/DebateReligion/about/muted",

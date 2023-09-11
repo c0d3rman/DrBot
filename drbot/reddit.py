@@ -45,6 +45,10 @@ class Reddit(praw.Reddit):
     @property
     def sub(self):
         return self.subreddit(settings.subreddit)
+    
+    @property
+    def me(self):
+        return reddit().user.me()
 
     def user_exists(self, username: str) -> bool:
         """Check if a user exists on reddit."""
