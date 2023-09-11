@@ -45,7 +45,7 @@ class Reddit(praw.Reddit):
     @property
     def sub(self):
         return self.subreddit(settings.subreddit)
-    
+
     @property
     def me(self):
         return reddit().user.me()
@@ -94,8 +94,8 @@ class Reddit(praw.Reddit):
             log.info(f"""[DRY RUN: would have sent the following modmail:
     Subject: "{subject}"
     {body}]""")
-             # Create a fake modmail to return so as to not break callers that need one in dry run mode
-            fake_modmail = lambda: None
+            # Create a fake modmail to return so as to not break callers that need one in dry run mode
+            def fake_modmail(): return None
             fake_modmail.id = f"fakeid_{uuid4().hex}"
             return fake_modmail
         else:
@@ -164,16 +164,16 @@ def login() -> praw.Reddit:
         modmail_handler.setFormatter(TemplateLoggingFormatter(fmt=BASE_FORMAT, template={
             logging.ERROR: """DRBOT has encountered a non-fatal error:
 
-    ```
-    {log}
-    ```
+```
+{log}
+```
 
-    DRBOT is still running. Check the log for more details.""",
+DRBOT is still running. Check the log for more details.""",
             logging.CRITICAL: """DRBOT has encountered a fatal error and crashed:
 
-    ```
-    {log}
-    ```"""}))
+```
+{log}
+```"""}))
         modmail_handler.setLevel(logging.ERROR)
         log.addHandler(modmail_handler)
 
