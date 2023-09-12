@@ -65,7 +65,7 @@ class ViolationInterval:
         removals = self.removals
         if relevant_only:
             removals = [r for r in removals if points_handler.get_point_cost(r) > 0]
-        for removal in self.removals:
+        for removal in removals:
             fullname = removal.target_id
             target = points_handler.get_thing(fullname, cache=cache)
             if fullname.startswith("t1_"):
