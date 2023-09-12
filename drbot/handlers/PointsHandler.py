@@ -133,8 +133,8 @@ class PointsHandler(Handler[ModAction]):
                 log.info(f"""[DRY RUN: would have sent the following reply to modmail {point_alert.id}:
     {message}]""")
             else:
-                item.reply(author_hidden=True, body=message)
-                item.archive()
+                point_alert.reply(author_hidden=True, body=message)
+                point_alert.archive()
 
             # Purge data.
             del self.data_store["outstanding_alerts"][item.target_author]
