@@ -134,7 +134,6 @@ class PointsHandler(Handler[ModAction]):
     {message}]""")
             else:
                 point_alert.reply(author_hidden=True, body=message)
-                point_alert.archive()
 
             # Purge data.
             del self.data_store["outstanding_alerts"][item.target_author]
