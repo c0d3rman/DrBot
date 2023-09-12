@@ -127,7 +127,7 @@ class PointsHandler(Handler[ModAction]):
                 return
 
             # Send a reply to the point alert and archive it.
-            point_alert = reddit().sub.modmail.conversation(self.data_store["outstanding_alerts"][item.target_author]["modmail"])
+            point_alert = reddit().sub.modmail(self.data_store["outstanding_alerts"][item.target_author]["modmail"])
             message = f"u/{item.target_author} has been banned."
             if settings.dry_run:
                 log.info(f"""[DRY RUN: would have sent the following reply to modmail {point_alert.id}:
