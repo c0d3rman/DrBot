@@ -1,0 +1,28 @@
+{
+    "subreddit": "",
+    "dry_run": false,
+    "reddit_auth": {
+        "_refresh_token": "",
+        "manual": {
+            "_username": "",
+            "_password": "",
+            "_client_secret": ""
+        },
+        "drbot_client_id": "bqWLOtXlkLqFXMTswPkrnQ"
+    },
+    "logging": {
+        "log_path": "data/log.log",
+        "console_log_level": "INFO",
+        "file_log_level": "DEBUG",
+        "praw_log_path": "",
+        "modmail_errors": true
+    },
+    "storage": {
+        "wiki_page": "DrBot",
+        "wiki_data_subpage": "data",
+        "local_backup_path": "data/backup.json"
+    },
+    "config": {
+        "data_folder_path": "data/"
+    }
+}
