@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Any
 import logging
+from drbot.streams import PostStream
 import schedule
 import time
 from .log import log
@@ -9,7 +10,7 @@ from .storage import DataStore
 from .settings import SettingsManager, settings
 from .Botling import Botling
 from .Stream import Stream
-from .streams import ModmailStream
+from .streams import ModmailStream, PostStream
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -28,6 +29,7 @@ class Streams:
 
         # All standard streams are initialized and registered here.
         self.modmail = self.__add(ModmailStream())
+        self.post = self.__add(PostStream())
 
     def add(self, stream: Stream[Any]) -> None:
         """Add a custom stream, accessible via DR.streams.custom["name"]."""
@@ -64,7 +66,7 @@ class DrBot:
     def register(self, regi: SubRegi) -> SubRegi:
         """Register a registerable object (i.e. Botling or Stream) with DrBot.
         Returns the object back for convenience."""
-        # TBD Dupe check
+        # TBD Dupe check. For streams, make sure to check for dupes across both standard and custom
         log.debug(f"Registering {regi.kind}: {name_of(regi)}.")
         SettingsManager().process_settings(regi)
         if isinstance(regi, Botling):

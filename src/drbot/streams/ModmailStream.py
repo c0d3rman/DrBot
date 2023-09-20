@@ -2,13 +2,8 @@ from __future__ import annotations
 from datetime import datetime
 from pytz import UTC
 from praw.models import ModmailConversation
-from ..log import log
 from ..reddit import reddit
 from ..Stream import Stream
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from ..storage import StorageDict
 
 
 class ModmailStream(Stream[ModmailConversation]):
@@ -25,26 +20,21 @@ class ModmailStream(Stream[ModmailConversation]):
         # This endpoint doesn't have a 'before' parameter for some reason, so we do it manually
         items: list[ModmailConversation] = []
         for item in reddit.sub.modmail.conversations(state=self.state, limit=None):
-            if self.id(item) == self.storage["last_processed"]:
+            if self.storage["last_processed"] and self.id(item) == self.storage["last_processed"]:
                 break
             # Safety check to make sure we don't go back in time somehow, which happened once.
             d = datetime.fromisoformat(item.messages[0].date)
-            if d < self.storage["last_processed_time"]:
+            if self.storage["last_processed"] and d < self.storage["last_processed_time"]:
                 break
             self.storage["last_processed_time"] = d
             items.append(item)
-
-            # TEMP
-            if len(items) >= 10:
-                break
         return list(reversed(items))  # Process from earliest to latest
 
     def id(self, item: ModmailConversation) -> str:
         return item.id
 
     def get_latest_item(self) -> ModmailConversation | None:
-        return
-        return next(reddit.sub.modmail.conversations(state=self.state, limit=1))
+        return next(reddit.sub.modmail.conversations(state=self.state, limit=1), None)
 
     # def skip_item(self, item: ModmailConversation) -> bool:
     #     # Make sure DrBot's not already in the thread.

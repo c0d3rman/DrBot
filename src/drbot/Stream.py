@@ -123,11 +123,11 @@ class Stream(Regi, Generic[T]):
     @abstractmethod
     def get_items(self) -> Iterable[T]:
         """Get all new items for the agent to process. E.g. all new modlog entries.
-        You can use self.storage["last_processed"] for this purpose."""
+        You can use self.storage["last_processed"] for this purpose. Make sure to handle the None case (e.g. when your sub is brand new and has no posts/modmails/whatever)."""
         pass
 
     @abstractmethod
-    def id(self, item: T) -> str:
+    def id(self, item: T) -> Any:
         """Get a unique ID for a given item. Used for keeping track of last_processed."""
         pass
 
