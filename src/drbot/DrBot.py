@@ -10,7 +10,7 @@ from .storage import DataStore
 from .settings import SettingsManager, settings
 from .Botling import Botling
 from .Stream import Stream
-from .streams import ModmailStream, PostStream
+from .streams import ModmailStream, PostStream, ModlogStream
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -30,6 +30,7 @@ class Streams:
         # All standard streams are initialized and registered here.
         self.modmail = self.__add(ModmailStream())
         self.post = self.__add(PostStream())
+        self.modlog = self.__add(ModlogStream())
 
     def add(self, stream: Stream[Any]) -> None:
         """Add a custom stream, accessible via DR.streams.custom["name"]."""
