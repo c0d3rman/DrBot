@@ -1,15 +1,50 @@
 from __future__ import annotations
 from typing import Any
 import os
-import sys
 import copy
 import json
 import tomlkit
-from .util import Singleton, DotDict
+from tomlkit.items import Item
+from .util import Singleton
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .DrBotling import DrBotling
+
+
+class DotDict(dict[Any, Any]):
+    """A read-only dictionary that allows dot notation access.
+    Also handles unwrapping of tomlkit items."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__()
+        for dict_arg in args:
+            for k, v in dict_arg.items():
+                if isinstance(v, dict) and not isinstance(v, DotDict):
+                    v = DotDict(v)
+                super().__setitem__(k, v)
+        for k, v in kwargs.items():
+            if isinstance(v, dict) and not isinstance(v, DotDict):
+                v = DotDict(v)
+            super().__setitem__(k, v)
+
+    def __setitem__(self, key: Any, value: Any) -> None:
+        raise AttributeError(f"This dictionary is read only. You cannot edit the key '{key}'.")
+
+    def __delitem__(self, key: Any) -> None:
+        raise AttributeError(f"This dictionary is read only. You cannot edit the key '{key}'.")
+
+    def __getattr__(self, key: Any) -> Any:
+        # Unwrap tomlkit items, since they sometimes cause issues when passed to PRAW
+        if isinstance(self.__getitem__(key), Item):
+            return self.__getitem__(key).unwrap()
+        return self.__getitem__(key)
+
+    def __setattr__(self, key: Any, value: Any) -> None:
+        self.__setitem__(key, value)
+
+    def __delattr__(self, key: Any) -> None:
+        self.__delitem__(key)
 
 
 class DrSettings(Singleton):

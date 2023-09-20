@@ -50,6 +50,7 @@ class LogFormatter(logging.Formatter):
 
         return super().format(record, *args, **kwargs)
 
+
 # Setup logger
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)

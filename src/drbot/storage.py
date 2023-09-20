@@ -2,25 +2,25 @@ from __future__ import annotations
 from typing import Any
 import json
 import re
+import copy
 from prawcore.exceptions import NotFound
 from .log import log
 from .settings import settings
-from .util import DateJSONEncoder, DateJSONDecoder
+from .util import DateJSONEncoder, DateJSONDecoder, name_of
 from .reddit import reddit
-
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from .DrBotling import DrBotling
+from .DrBotling import DrBotling
+from .DrStream import DrStream
 
 
 class DrDict(dict[Any, Any]):
-    """A magic dictionary that provides persistent storage for a Botling.
+    """A magic dictionary that provides persistent storage.
     You can put anything you want in here so long as it's JSON-serializable, and it will be synced to a wiki page on Reddit."""
 
-    def __init__(self, *args: Any, encoder: type[json.JSONEncoder] | None = None, decoder: type[json.JSONDecoder] | None = None, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, store: DrStore, encoder: type[json.JSONEncoder] | None = None, decoder: type[json.JSONDecoder] | None = None, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.__encoder = encoder or DateJSONEncoder
         self.__decoder = decoder or DateJSONDecoder
+        self.__store = store
 
     def to_json(self) -> str:
         """Get a JSON dump of the dict."""
@@ -32,6 +32,10 @@ class DrDict(dict[Any, Any]):
         self.update(json.loads(json_string, cls=self.__decoder))
         return self
 
+    def force_save(self) -> None:
+        """Ask the DrStore to save right now. Don't use this unless there's a good reason you can't wait until the next regular save."""
+        self.__store.save()
+
 
 class DrStore:
     """The data manager for DrBot.
@@ -42,39 +46,52 @@ class DrStore:
     def __init__(self):
         self.WIKI_PAGE: str = settings.storage.wiki_page
         self.DATA_PAGE: str = f"{settings.storage.wiki_page}/{settings.storage.wiki_data_subpage}"
-        self.__raws: dict[str, str] = {}
-        self.__dicts: dict[str, DrDict] = {}
+        self.__raws: dict[str, dict[str, str]] = {}
+        self.__dicts: dict[str, dict[str, DrDict]] = {}
 
         # Load data from the wiki page
+        self.__loaded = False
         self._load()
 
-        # Create a meta dict if needed.
+        # Create top-level dicts if required.
         if not "_meta" in self.__dicts:
-            self.__dicts["_meta"] = DrDict({"version": "2.0.0"})
+            self.__dicts["_meta"] = {"DrBot": DrDict({"version": "2.0.0"}, store=self)}
+        if not "Botlings" in self.__dicts:
+            self.__dicts["DrBotling"] = {}
+        if not "Streams" in self.__dicts:
+            self.__dicts["DrStream"] = {}
 
         log.debug("DrStore initialized.")
 
-    def __getitem__(self, botling: DrBotling) -> DrDict:
-        """Get a DrDict for a given botling.
-        _meta is a reserved name and cannot be used."""
+    def __getitem__(self, obj: DrBotling | DrStream[Any]) -> DrDict:
+        """Get a DrDict for a given Botling or DrStream."""
 
-        if botling.name == "_meta":
-            raise IndexError("_meta is a reserved name and cannot be used.")
-        if not botling.name in self.__dicts:
-            log.debug(f"Creating DrDict for Botling {botling.name} ({botling.__class__.__name__}).")
-            self.__dicts[botling.name] = DrDict(encoder=botling.json_encoder, decoder=botling.json_decoder)
-            if botling.name in self.__raws:
-                log.debug(f"Loading existing data into the DrDict for Botling {botling.name} ({botling.__class__.__name__}).")
-                self.__dicts[botling.name].from_json(self.__raws[botling.name])
-        return self.__dicts[botling.name]
+        for t in [DrBotling, DrStream]:
+            if isinstance(obj, t):
+                dicts = self.__dicts[t.__name__]
+                raws = self.__raws.get(t.__name__, {})
+                break
+        else:
+            raise ValueError(f"Can't get DrDict for object of unknown type: {type(obj)}")
+
+        if not obj.name in dicts:
+            log.debug(f"Creating DrDict for object {name_of(obj)}.")
+            dicts[obj.name] = DrDict(store=self, encoder=obj.json_encoder, decoder=obj.json_decoder)
+            if obj.name in raws:
+                log.debug(f"Loading existing data into the DrDict for object {name_of(obj)}.")
+                dicts[obj.name].from_json(raws[obj.name])
+        return dicts[obj.name]
 
     def to_json(self) -> str:
         """Dump the DrStore to JSON.
         The data is stored with two layers of JSON dumping - each DrDict is made into a JSON string, and then the overall dict of names to stringified DrDicts is made into a JSON string.
         We do it this way to allow each Botling to specify custom JSON encoding/decoding without interfering with the others, and so that we can load the data first and then register Botlings one by one."""
 
-        out = dict(self.__raws)  # Preserve any unparsed raws
-        out.update({k: d.to_json() for k, d in self.__dicts.items()})
+        out = copy.deepcopy(self.__raws)  # Preserve any unparsed raws
+        for k, d in self.__dicts.items():
+            if not k in out:
+                out[k] = {}
+            out[k].update({k2: d2.to_json() for k2, d2 in d.items()})
         return json.dumps(out)
 
     def save(self) -> None:
@@ -138,7 +155,12 @@ class DrStore:
         """This is an internal method and should not be called.
         Loads the data from the wiki, which fetches the raw JSON strings for each Botling's storage.
         These strings are not parsed into DrDicts until their Botling is registered (and tells us how to decode them).
-        The exception is the global _meta, which is parsed right away."""
+        The exception is the global _meta, which is parsed right away.
+        This method will refuse to load data after initialization."""
+
+        if self.__loaded:
+            raise RuntimeError("Do not manually call _load! To avoid clobbering your data, DrStore cannot load data after initialization.")
+        self.__loaded = True
 
         # if not reddit.page_exists(self.DATA_PAGE):
         #     log.info("Couldn't load data from the wiki because no wiki page exists. If this is your first time running DrBot, this is normal. If not then there is some sort of issue.")
@@ -161,10 +183,10 @@ class DrStore:
         try:
             self.__raws = json.loads(data)
         except json.JSONDecodeError as e:
-            log.critical(f"Could not decode the JSON data from the wiki! If you can, manually fix the JSON issue in {self.DATA_PAGE}. If not, delete everything from the page and rerun DrBot (but this will lose all of your data). Error text:\n{e}")
+            log.critical(f"Could not decode JSON data from the wiki! If you can, manually fix the JSON issue in {self.DATA_PAGE}. If not, delete everything from the page and rerun DrBot (but this will lose all of your data). Error text:\n{e}")
             raise e
 
-        # Load _meta into a DrDict immediately
-        # It should always exist, but if it doesn't we just make a new one.
+        # Load everything in _meta immediately
         if "_meta" in self.__raws:
-            self.__dicts["_meta"] = DrDict().from_json(self.__raws["_meta"])
+            self.__dicts["_meta"] = {k: DrDict(store=self).from_json(d) for k, d in self.__raws["_meta"].items()}
+            log.debug("Loaded DrStore metadata from wiki.")

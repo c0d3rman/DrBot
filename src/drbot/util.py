@@ -44,33 +44,6 @@ class Singleton:
     def __init__(self, *args: Any, **kwargs: Any):
         self._initialized = True
 
-
-class DotDict(dict[Any, Any]):
-    """A read-only dictionary that allows dot notation access."""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
-        super().__init__()
-        for dict_arg in args:
-            for k, v in dict_arg.items():
-                if isinstance(v, dict) and not isinstance(v, DotDict):
-                    v = DotDict(v)
-                super().__setitem__(k, v)
-        for k, v in kwargs.items():
-            if isinstance(v, dict) and not isinstance(v, DotDict):
-                v = DotDict(v)
-            super().__setitem__(k, v)
-
-    def __setitem__(self, key: Any, value: Any) -> None:
-        raise AttributeError(f"This dictionary is read only. You cannot edit the key '{key}'.")
-
-    def __delitem__(self, key: Any) -> None:
-        raise AttributeError(f"This dictionary is read only. You cannot edit the key '{key}'.")
-
-    def __getattr__(self, key: Any) -> Any:
-        return self.__getitem__(key)
-
-    def __setattr__(self, key: Any, value: Any) -> None:
-        self.__setitem__(key, value)
-
-    def __delattr__(self, key: Any) -> None:
-        self.__delitem__(key)
+def name_of(o: Any) -> str:
+    """A helper to get the name of an object alongside its class name."""
+    return f"{o.name} ({o.__class__.__name__})"
