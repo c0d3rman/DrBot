@@ -47,7 +47,7 @@ class DotDict(dict[Any, Any]):
         self.__delitem__(key)
 
 
-class DrSettings(Singleton):
+class SettingsManager(Singleton):
     """DrBot's settings manager."""
 
     SETTINGS_DIR = 'settings'
@@ -144,14 +144,14 @@ class DrSettings(Singleton):
                 output[k] = settings.get(k, v)
         return output
 
-    def process_settings(self, target: Regi | DrSettings) -> None:
+    def process_settings(self, target: Regi | SettingsManager) -> None:
         """
-        Handle settings loading for a botling or the DrSettings manager itself.
+        Handle settings loading for a botling or the SettingsManager manager itself.
         Read settings from disk or initialize them using the defaults if they are not present.
         """
         # Get the target directory
         settings_dir = self.SETTINGS_DIR
-        if not isinstance(target, DrSettings):
+        if not isinstance(target, SettingsManager):
             settings_dir = os.path.join(settings_dir, target.name)
 
         # Get the target filepaths
@@ -206,7 +206,7 @@ class DrSettings(Singleton):
             tomlkit.dump(settings, f)
 
 
-settings = DrSettings().settings
+settings = SettingsManager().settings
 
 # Create the data path if it doesn't already exists, since other files will assume it does
 os.makedirs(os.path.dirname(settings.config.data_folder_path), exist_ok=True)

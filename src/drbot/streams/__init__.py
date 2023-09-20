@@ -1,4 +1,4 @@
-from ..DrStream import DrStream, ObserverBundle
+from ..Stream import Stream, ObserverBundle
 from .ModmailStream import ModmailStream
 
-__all__ = ["DrStream", "ModmailStream"]
+__all__ = ["Stream", "ModmailStream"]

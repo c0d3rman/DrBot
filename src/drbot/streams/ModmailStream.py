@@ -4,14 +4,14 @@ from pytz import UTC
 from praw.models import ModmailConversation
 from ..log import log
 from ..reddit import reddit
-from ..DrStream import DrStream
+from ..Stream import Stream
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from ..storage import DrDict
+    from ..storage import StorageDict
 
 
-class ModmailStream(DrStream[ModmailConversation]):
+class ModmailStream(Stream[ModmailConversation]):
     """A stream of modmail conversations."""
 
     def __init__(self, name: str | None = None, state: str = "all") -> None:

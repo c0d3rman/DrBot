@@ -7,11 +7,11 @@ from .util import name_of
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .storage import DrDict
+    from .storage import StorageDict
 
 
 class Regi(ABC):
-    """A base class for DrBotling and DrStream's shared functionalities,
+    """A base class for Botling and Stream's shared functionalities,
     particularly dealing with registration with DrBot and graceful error handling.
     The name is short for "Registerable"."""
 
@@ -30,7 +30,7 @@ class Regi(ABC):
         self.settings = copy.deepcopy(self.default_settings)
         log.debug(f"{self.__kind} {name_of(self)} intialized.")
 
-    def accept_registration(self, storage: DrDict, setup: bool = True) -> None:
+    def accept_registration(self, storage: StorageDict, setup: bool = True) -> None:
         """This should only ever be called by DrBot.register(). Do not call it yourself.
         The setup flag is used to allow overriding this method without messing up the order of operations. setup() must be called in the override."""
         if self.__is_registered:
@@ -49,7 +49,7 @@ class Regi(ABC):
     
     @property
     def kind(self) -> str:
-        """The Regi's kind, i.e. Botling or DrStream."""
+        """The Regi's kind, i.e. Botling or Stream."""
         return self.__kind
 
     @property

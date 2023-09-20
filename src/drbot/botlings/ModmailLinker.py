@@ -4,10 +4,10 @@ from praw.models import ModmailConversation
 from ..log import log
 from ..settings import settings
 from ..reddit import reddit
-from ..DrBotling import DrBotling
+from ..Botling import Botling
 
 
-class ModmailLinker(DrBotling):
+class ModmailLinker(Botling):
     """Scans modmails for removal messages and adds mobile-compatible links."""
 
     def setup(self) -> None:

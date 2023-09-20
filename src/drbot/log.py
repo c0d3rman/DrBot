@@ -40,10 +40,10 @@ class LogFormatter(logging.Formatter):
 
         # Botling detection
         if detect_botling:
-            from .DrBotling import DrBotling  # Lazy import to avoid circular dependency
+            from .Botling import Botling  # Lazy import to avoid circular dependency
             for frame_record in inspect.stack():
                 self_obj = frame_record.frame.f_locals.get('self')
-                if isinstance(self_obj, DrBotling):
+                if isinstance(self_obj, Botling):
                     record.botlingclass = self_obj.__class__.__name__
                     record.botlingname = self_obj.name
                     break
@@ -74,7 +74,7 @@ if settings.logging.log_path != "":
     log.addHandler(logfile_handler)
 
 
-# We also log to modmail, which is initialized in DrReddit
+# We also log to modmail, which is initialized in reddit.py
 # The classes below are for that
 
 

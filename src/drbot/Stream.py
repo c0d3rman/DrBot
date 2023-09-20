@@ -8,8 +8,8 @@ from .Regi import Regi
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Callable, Iterable, Any
-    from .storage import DrDict
-    from .DrBotling import DrBotling
+    from .storage import StorageDict
+    from .Botling import Botling
 
 T = TypeVar("T")
 
@@ -17,7 +17,7 @@ T = TypeVar("T")
 class ObserverBundle(Generic[T]):
     """A class used to hold information about a subscribed observer."""
 
-    def __init__(self, botling: DrBotling, handler: Callable[[T], None], start_run: Callable[[], None] | None = None) -> None:
+    def __init__(self, botling: Botling, handler: Callable[[T], None], start_run: Callable[[], None] | None = None) -> None:
         self.botling = botling
         self.handler = handler
         self.start_run = start_run
@@ -29,21 +29,21 @@ class ObserverBundle(Generic[T]):
         return f"{self.botling.name} ({get_name(self.handler)}" + (f", {get_name(self.start_run)}" if self.start_run else "") + ")"
 
 
-class DrStream(Regi, Generic[T]):
+class Stream(Regi, Generic[T]):
     """Scans incoming entries of type T and notifies observers about them."""
 
     def __init__(self, name: str | None = None) -> None:
-        super().__init__("DrStream", name)
+        super().__init__("Stream", name)
         self.__observers: list[ObserverBundle[T]] = []
 
     @property
     def is_active(self) -> bool:
-        """Whether this DrStream wants to poll.
-        DrStreams turn themselves off when they have no observers.
+        """Whether this Stream wants to poll.
+        Streams turn themselves off when they have no observers.
         Not the same as is_alive - death is permanent, inactivity is not."""
         return len(self.__observers) > 0
 
-    def accept_registration(self, storage: DrDict, setup: bool = True) -> None:
+    def accept_registration(self, storage: StorageDict, setup: bool = True) -> None:
         super().accept_registration(storage, setup=False)
 
         # Initialize last_processed
@@ -53,13 +53,13 @@ class DrStream(Regi, Generic[T]):
         if setup:
             self.setup()
 
-    def subscribe(self, botling: DrBotling, handler: Callable[[T], None], start_run: Callable[[], None] | None = None) -> ObserverBundle[T]:
+    def subscribe(self, botling: Botling, handler: Callable[[T], None], start_run: Callable[[], None] | None = None) -> ObserverBundle[T]:
         """Subscribe an observer with the stream.
         Optionally, you can also pass a start_run function that is run when we get a new batch of items (most useful for invalidating caches).
         Returns an ObserverBundle which you can keep if you want to unsubscribe later."""
         bundle = ObserverBundle(botling, handler, start_run)
         self.__observers.append(bundle)
-        log.debug(f"Observer {bundle.name} subscribed to DrStream {name_of(self)}.")
+        log.debug(f"Observer {bundle.name} subscribed to Stream {name_of(self)}.")
         return bundle
 
     def unsubscribe(self, bundle: ObserverBundle[T]) -> bool:
@@ -67,10 +67,10 @@ class DrStream(Regi, Generic[T]):
         Returns True if deregistration was successful."""
         if bundle in self.__observers:
             self.__observers.remove(bundle)
-            log.debug(f"Observer {bundle.name} unsubscribed from DrStream {name_of(self)}.")
+            log.debug(f"Observer {bundle.name} unsubscribed from Stream {name_of(self)}.")
             return True
         else:
-            log.debug(f"Couldn't unsubscribe observer {bundle.name} from DrStream {name_of(self)} because it's not subscribed.")
+            log.debug(f"Couldn't unsubscribe observer {bundle.name} from Stream {name_of(self)} because it's not subscribed.")
             return False
 
     def run(self) -> None:
@@ -78,42 +78,42 @@ class DrStream(Regi, Generic[T]):
         Handles killing and unsubscribing any observers that error."""
 
         if not self.storage:
-            raise RuntimeError(f"DrStream {name_of(self)} was run before it was registered.")
+            raise RuntimeError(f"Stream {name_of(self)} was run before it was registered.")
 
         items = [item for item in self.get_items() if not self.skip_item(item)]
         if len(items) == 0:
             return
-        log.info(f"DrStream {name_of(self)} processing {len(items)} new items.")
+        log.info(f"Stream {name_of(self)} processing {len(items)} new items.")
 
         # Let all the handlers know we're starting a new run
         for i in reversed(range(len(self.__observers))):  # Reversed iteration since we may remove some items
             bundle = self.__observers[i]
             if not bundle.botling.is_alive:
-                log.debug(f"Unsubscribing observer {bundle.name} from DrStream {name_of(self)} since it is dead.")
+                log.debug(f"Unsubscribing observer {bundle.name} from Stream {name_of(self)} since it is dead.")
                 del self.__observers[i]
             if bundle.start_run:
-                log.debug(f"DrStream {name_of(self)} notifying observer {bundle.name} about the start of a new run.")
+                log.debug(f"Stream {name_of(self)} notifying observer {bundle.name} about the start of a new run.")
                 try:
                     bundle.start_run()
                 except Exception:
                     bundle.botling.die()
                     del self.__observers[i]
-                    log.exception(f"Observer {bundle.name} of DrStream {name_of(self)} crashed during start_run.")
+                    log.exception(f"Observer {bundle.name} of Stream {name_of(self)} crashed during start_run.")
 
         # Process items
         for item in items:
-            log.debug(f"DrStream {name_of(self)} handling item {self.id(item)}")
+            log.debug(f"Stream {name_of(self)} handling item {self.id(item)}")
             for i in reversed(range(len(self.__observers))):  # Reversed iteration since we may remove some items
                 bundle = self.__observers[i]
                 if not bundle.botling.is_alive:
-                    log.debug(f"Unsubscribing observer {bundle.name} from DrStream {name_of(self)} since it is dead.")
+                    log.debug(f"Unsubscribing observer {bundle.name} from Stream {name_of(self)} since it is dead.")
                     del self.__observers[i]
                 try:
                     bundle.handler(item)
                 except Exception:
                     bundle.botling.die()
                     del self.__observers[i]
-                    log.exception(f"Observer {bundle.name} of DrStream {name_of(self)} crashed during handler.")
+                    log.exception(f"Observer {bundle.name} of Stream {name_of(self)} crashed during handler.")
             self.storage["last_processed"] = self.id(item)
 
         # Save our storage right now to make sure we don't reprocess any items,

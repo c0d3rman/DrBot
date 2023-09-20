@@ -5,10 +5,10 @@ import schedule
 import time
 from .log import log
 from .util import name_of
-from .storage import DrStore
-from .settings import DrSettings, settings
-from .DrBotling import DrBotling
-from .DrStream import DrStream
+from .storage import DataStore
+from .settings import SettingsManager, settings
+from .Botling import Botling
+from .Stream import Stream
 from .streams import ModmailStream
 
 from typing import TYPE_CHECKING
@@ -19,17 +19,17 @@ if TYPE_CHECKING:
 
 
 class Streams:
-    """A helper class that holds the various DrStreams for DrBot to make them easy for Botlings to access."""
+    """A helper class that holds the various Streams for DrBot to make them easy for Botlings to access."""
 
     def __init__(self, drbot: DrBot) -> None:
         self.__drbot = drbot
-        self.custom: dict[str, DrStream[Any]] = {}
-        self.__standard: list[DrStream[Any]] = []
+        self.custom: dict[str, Stream[Any]] = {}
+        self.__standard: list[Stream[Any]] = []
 
         # All standard streams are initialized and registered here.
         self.modmail = self.__add(ModmailStream())
 
-    def add(self, stream: DrStream[Any]) -> None:
+    def add(self, stream: Stream[Any]) -> None:
         """Add a custom stream, accessible via DR.streams.custom["name"]."""
         self.custom[stream.name] = stream
 
@@ -40,12 +40,12 @@ class Streams:
         for stream in self.__standard:
             self.__drbot.register(stream)
 
-    def __add(self, stream: DrStream[Any]) -> DrStream[Any]:
+    def __add(self, stream: Stream[Any]) -> Stream[Any]:
         """Add a standard stream, putting it in __standard so we can iterate over all streams in __iter__."""
         self.__standard.append(stream)
         return stream
 
-    def __iter__(self) -> Iterator[DrStream[Any]]:
+    def __iter__(self) -> Iterator[Stream[Any]]:
         yield from self.__standard
         yield from self.custom.values()
 
@@ -54,23 +54,23 @@ class DrBot:
     """TBD"""
 
     def __init__(self) -> None:
-        self.storage = DrStore()
-        self.botlings: list[DrBotling] = []
+        self.storage = DataStore()
+        self.botlings: list[Botling] = []
         self.streams = Streams(self)
         self.streams.register_standard()
 
         log.debug("DrBot initialized.")
 
     def register(self, regi: SubRegi) -> SubRegi:
-        """Register a registerable object (i.e. Botling or DrStream) with DrBot.
+        """Register a registerable object (i.e. Botling or Stream) with DrBot.
         Returns the object back for convenience."""
         # TBD Dupe check
         log.debug(f"Registering {regi.kind}: {name_of(regi)}.")
-        DrSettings().process_settings(regi)
-        if isinstance(regi, DrBotling):
+        SettingsManager().process_settings(regi)
+        if isinstance(regi, Botling):
             self.botlings.append(regi)
-            regi.DR = DrRep(self, regi)
-        elif isinstance(regi, DrStream):
+            regi.DR = DrBotRep(self, regi)
+        elif isinstance(regi, Stream):
             self.streams.add(regi)
         else:
             raise ValueError(f"Can't register object of unknown type: {type(regi)}")
@@ -110,11 +110,11 @@ class DrBot:
                 time.sleep(t)
 
 
-class DrRep:
+class DrBotRep:
     """A representative of DrBot, passed to a Botling so it can have keyed access to a restricted subset of DrBot functions.
     This is not a security feature - it's only intended to prevent Botlings from accidentally messing something up."""
 
-    def __init__(self, drbot: DrBot, botling: DrBotling) -> None:
+    def __init__(self, drbot: DrBot, botling: Botling) -> None:
         self.__drbot = drbot
         self.__botling = botling
 
