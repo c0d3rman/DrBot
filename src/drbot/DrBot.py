@@ -13,7 +13,9 @@ from .streams import ModmailStream
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import Iterator
+    from typing import Iterator, TypeVar
+    from .Regi import Regi
+    SubRegi = TypeVar('SubRegi', bound=Regi)
 
 
 class Streams:
@@ -36,7 +38,7 @@ class Streams:
         Register all standard streams once DrBot is ready.
         Custom streams are registered as they're added."""
         for stream in self.__standard:
-            self.__drbot.register_stream(stream)
+            self.__drbot.register(stream)
 
     def __add(self, stream: DrStream[Any]) -> DrStream[Any]:
         """Add a standard stream, putting it in __standard so we can iterate over all streams in __iter__."""
@@ -59,32 +61,21 @@ class DrBot:
 
         log.debug("DrBot initialized.")
 
-    def register_botling(self, botling: DrBotling) -> None:
-        """Register a stream with DrBot, which gives it access to its storage and sets up its settings."""
+    def register(self, regi: SubRegi) -> SubRegi:
+        """Register a registerable object (i.e. Botling or DrStream) with DrBot.
+        Returns the object back for convenience."""
         # TBD Dupe check
-        log.debug(f"Registering Botling: {name_of(botling)}.")
-        self.botlings.append(botling)
-        DrSettings().process_settings(botling)
-        botling.register_init(DrRep(self, botling), self.storage[botling])
-
-    def register_stream(self, stream: DrStream[Any]) -> DrStream[Any]:
-        """Register a stream with DrBot, which gives it access to its storage.
-        Returns the stream for ease of use in DrBot's constructor."""
-        # TBD Dupe check
-        log.debug(f"Registering DrStream: {name_of(stream)}.")
-        self.streams.add(stream)
-        stream.register_init(self.storage[stream])
-        return stream
-
-    def register(self, obj: DrBotling | DrStream[Any]) -> None:
-        """Register a Botling or DrStream with DrBot.
-        A convenience method that calls register_botling or register_stream as appropriate."""
-        if isinstance(obj, DrBotling):
-            self.register_botling(obj)
-        elif isinstance(obj, DrStream):
-            self.register_stream(obj)
+        log.debug(f"Registering {regi.kind}: {name_of(regi)}.")
+        DrSettings().process_settings(regi)
+        if isinstance(regi, DrBotling):
+            self.botlings.append(regi)
+            regi.DR = DrRep(self, regi)
+        elif isinstance(regi, DrStream):
+            self.streams.add(regi)
         else:
-            raise ValueError(f"Can't register object of unknown type: {type(obj)}")
+            raise ValueError(f"Can't register object of unknown type: {type(regi)}")
+        regi.accept_registration(self.storage[regi])
+        return regi
 
     def run(self) -> None:
         """DrBot's main loop. Call this once all Botlings have been registered. Will run forever."""
@@ -103,7 +94,7 @@ class DrBot:
         # Regularly poll all streams
         def poll_streams():
             for stream in self.streams:
-                if stream.active:
+                if stream.is_active:
                     stream.run()  # Error guard?
         schedule.every(10).seconds.do(poll_streams)  # TBD generalize polling intervals (vary by stream?)
 

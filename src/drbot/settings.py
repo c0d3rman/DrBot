@@ -9,7 +9,7 @@ from .util import Singleton
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .DrBotling import DrBotling
+    from .Regi import Regi
 
 
 class DotDict(dict[Any, Any]):
@@ -144,7 +144,7 @@ class DrSettings(Singleton):
                 output[k] = settings.get(k, v)
         return output
 
-    def process_settings(self, target: DrBotling | DrSettings) -> None:
+    def process_settings(self, target: Regi | DrSettings) -> None:
         """
         Handle settings loading for a botling or the DrSettings manager itself.
         Read settings from disk or initialize them using the defaults if they are not present.

@@ -3,6 +3,7 @@ from abc import abstractmethod
 from typing import Generic, TypeVar
 from .log import log
 from .util import name_of
+from .Regi import Regi
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -28,41 +29,29 @@ class ObserverBundle(Generic[T]):
         return f"{self.botling.name} ({get_name(self.handler)}" + (f", {get_name(self.start_run)}" if self.start_run else "") + ")"
 
 
-class DrStream(Generic[T]):
+class DrStream(Regi, Generic[T]):
     """Scans incoming entries of type T and notifies observers about them."""
 
     def __init__(self, name: str | None = None) -> None:
-        """Each DrStream must have a unique name.
-        You can set json_encoder and json_decoder to custom ones in __init__ if you want custom serialization."""
-        super().__init__()
-        self.__name = name or self.__class__.__name__
-        self.json_encoder = self.json_decoder = None
+        super().__init__("DrStream", name)
         self.__observers: list[ObserverBundle[T]] = []
 
     @property
-    def name(self) -> str:
-        """The DrStream's name. Each DrStream must have a unique name.
-        Equal to the class name by default."""
-        return self.__name
-    
-    @property
-    def active(self) -> bool:
+    def is_active(self) -> bool:
         """Whether this DrStream wants to poll.
-        DrStreams turn themselves off when they have no observers."""
+        DrStreams turn themselves off when they have no observers.
+        Not the same as is_alive - death is permanent, inactivity is not."""
         return len(self.__observers) > 0
 
-    def register_init(self, storage: DrDict):
-        """This should only ever be called by DrBot.register_stream(). Do not call it yourself."""
-        if hasattr(self, "storage"):
-            raise ValueError("A DrStream cannot be registered multiple times.")
-        self.storage = storage
+    def accept_registration(self, storage: DrDict, setup: bool = True) -> None:
+        super().accept_registration(storage, setup=False)
 
         # Initialize last_processed
         latest = self.get_latest_item()
         self.storage["last_processed"] = None if latest is None else self.id(latest)
 
-        log.debug(f"DrStream {name_of(self)} registered.")
-        self.setup()
+        if setup:
+            self.setup()
 
     def subscribe(self, botling: DrBotling, handler: Callable[[T], None], start_run: Callable[[], None] | None = None) -> ObserverBundle[T]:
         """Subscribe an observer with the stream.
@@ -70,7 +59,7 @@ class DrStream(Generic[T]):
         Returns an ObserverBundle which you can keep if you want to unsubscribe later."""
         bundle = ObserverBundle(botling, handler, start_run)
         self.__observers.append(bundle)
-        log.debug(f"Observer {bundle.name} subscribed to DrStream {self.name}")
+        log.debug(f"Observer {bundle.name} subscribed to DrStream {name_of(self)}.")
         return bundle
 
     def unsubscribe(self, bundle: ObserverBundle[T]) -> bool:
@@ -78,10 +67,10 @@ class DrStream(Generic[T]):
         Returns True if deregistration was successful."""
         if bundle in self.__observers:
             self.__observers.remove(bundle)
-            log.debug(f"Observer {bundle.name} unsubscribed from DrStream {self.name}")
+            log.debug(f"Observer {bundle.name} unsubscribed from DrStream {name_of(self)}.")
             return True
         else:
-            log.debug(f"Couldn't unsubscribe observer {bundle.name} from DrStream {self.name} because it's not subscribed")
+            log.debug(f"Couldn't unsubscribe observer {bundle.name} from DrStream {name_of(self)} because it's not subscribed.")
             return False
 
     def run(self) -> None:
@@ -89,60 +78,55 @@ class DrStream(Generic[T]):
         Handles killing and unsubscribing any observers that error."""
 
         if not self.storage:
-            raise RuntimeError(f"DrStream {self.name} was run before it was registered.")
+            raise RuntimeError(f"DrStream {name_of(self)} was run before it was registered.")
 
         items = [item for item in self.get_items() if not self.skip_item(item)]
         if len(items) == 0:
             return
-        log.info(f"DrStream {self.name} processing {len(items)} new items.")
+        log.info(f"DrStream {name_of(self)} processing {len(items)} new items.")
 
         # Let all the handlers know we're starting a new run
         for i in reversed(range(len(self.__observers))):  # Reversed iteration since we may remove some items
             bundle = self.__observers[i]
             if not bundle.botling.is_alive:
-                log.debug(f"Unsubscribing observer {bundle.name} from DrStream {self.name} since it is dead")
+                log.debug(f"Unsubscribing observer {bundle.name} from DrStream {name_of(self)} since it is dead.")
                 del self.__observers[i]
             if bundle.start_run:
-                log.debug(f"DrStream {self.name} notifying observer {bundle.name} about the start of a new run")
+                log.debug(f"DrStream {name_of(self)} notifying observer {bundle.name} about the start of a new run.")
                 try:
                     bundle.start_run()
                 except Exception:
                     bundle.botling.die()
                     del self.__observers[i]
-                    log.exception(f"Observer {bundle.name} of DrStream {self.name} crashed during start_run.")
+                    log.exception(f"Observer {bundle.name} of DrStream {name_of(self)} crashed during start_run.")
 
         # Process items
         for item in items:
-            log.debug(f"DrStream {self.name} handling item {self.id(item)}")
+            log.debug(f"DrStream {name_of(self)} handling item {self.id(item)}")
             for i in reversed(range(len(self.__observers))):  # Reversed iteration since we may remove some items
                 bundle = self.__observers[i]
                 if not bundle.botling.is_alive:
-                    log.debug(f"Unsubscribing observer {bundle.name} from DrStream {self.name} since it is dead")
+                    log.debug(f"Unsubscribing observer {bundle.name} from DrStream {name_of(self)} since it is dead.")
                     del self.__observers[i]
                 try:
                     bundle.handler(item)
                 except Exception:
                     bundle.botling.die()
                     del self.__observers[i]
-                    log.exception(f"Observer {bundle.name} of DrStream {self.name} crashed during handler.")
+                    log.exception(f"Observer {bundle.name} of DrStream {name_of(self)} crashed during handler.")
             self.storage["last_processed"] = self.id(item)
 
         # Save our storage right now to make sure we don't reprocess any items,
         # even if bad things happen before the next scheduled save.
         self.storage.force_save()
 
-    def setup(self) -> None:
-        """Called once a DrStream is registered and has access to its storage.
-        This method is meant to be overriden, and you should do most setup here instead of __init__."""
-        pass
-
-    @ abstractmethod
+    @abstractmethod
     def get_items(self) -> Iterable[T]:
         """Get all new items for the agent to process. E.g. all new modlog entries.
         You can use self.storage["last_processed"] for this purpose."""
         pass
 
-    @ abstractmethod
+    @abstractmethod
     def id(self, item: T) -> str:
         """Get a unique ID for a given item. Used for keeping track of last_processed."""
         pass

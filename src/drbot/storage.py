@@ -8,8 +8,10 @@ from .log import log
 from .settings import settings
 from .util import DateJSONEncoder, DateJSONDecoder, name_of
 from .reddit import reddit
-from .DrBotling import DrBotling
-from .DrStream import DrStream
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .Regi import Regi
 
 
 class DrDict(dict[Any, Any]):
@@ -53,34 +55,23 @@ class DrStore:
         self.__loaded = False
         self._load()
 
-        # Create top-level dicts if required.
-        if not "_meta" in self.__dicts:
-            self.__dicts["_meta"] = {"DrBot": DrDict({"version": "2.0.0"}, store=self)}
-        if not "Botlings" in self.__dicts:
-            self.__dicts["DrBotling"] = {}
-        if not "Streams" in self.__dicts:
-            self.__dicts["DrStream"] = {}
-
         log.debug("DrStore initialized.")
 
-    def __getitem__(self, obj: DrBotling | DrStream[Any]) -> DrDict:
+    def __getitem__(self, regi: Regi) -> DrDict:
         """Get a DrDict for a given Botling or DrStream."""
 
-        for t in [DrBotling, DrStream]:
-            if isinstance(obj, t):
-                dicts = self.__dicts[t.__name__]
-                raws = self.__raws.get(t.__name__, {})
-                break
-        else:
-            raise ValueError(f"Can't get DrDict for object of unknown type: {type(obj)}")
+        if not regi.kind in self.__dicts:
+            self.__dicts[regi.kind] = {}
+        dicts = self.__dicts[regi.kind]
+        raws = self.__raws.get(regi.kind, {})
 
-        if not obj.name in dicts:
-            log.debug(f"Creating DrDict for object {name_of(obj)}.")
-            dicts[obj.name] = DrDict(store=self, encoder=obj.json_encoder, decoder=obj.json_decoder)
-            if obj.name in raws:
-                log.debug(f"Loading existing data into the DrDict for object {name_of(obj)}.")
-                dicts[obj.name].from_json(raws[obj.name])
-        return dicts[obj.name]
+        if not regi.name in dicts:
+            log.debug(f"Creating DrDict for {regi.kind} {name_of(regi)}.")
+            dicts[regi.name] = DrDict(store=self, encoder=regi.json_encoder, decoder=regi.json_decoder)
+            if regi.name in raws:
+                log.debug(f"Loading existing data into the DrDict for {regi.kind} {name_of(regi)}.")
+                dicts[regi.name].from_json(raws[regi.name])
+        return dicts[regi.name]
 
     def to_json(self) -> str:
         """Dump the DrStore to JSON.
@@ -190,3 +181,6 @@ class DrStore:
         if "_meta" in self.__raws:
             self.__dicts["_meta"] = {k: DrDict(store=self).from_json(d) for k, d in self.__raws["_meta"].items()}
             log.debug("Loaded DrStore metadata from wiki.")
+        # Or create it if required
+        else:
+            self.__dicts["_meta"] = {"DrBot": DrDict({"version": "2.0.0"}, store=self)}
