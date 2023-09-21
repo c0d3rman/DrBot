@@ -65,7 +65,12 @@ class Regi(ABC):
 
     def die(self) -> None:
         """Kill the Regi. Should only be used if it errors."""
-        self.__is_alive = True
+        self.__is_alive = False
+    
+    def dependency_died(self, dependency: Regi) -> None:
+        """Called when a dependency of yours dies. By default, you die as well.
+        You can override this if you want to be resilient to dependencies dying, but you'll have to make sure you use them carefully."""
+        self.die()
 
     def setup(self) -> None:
         """Called once a Regi is registered and has access to its storage and settings.

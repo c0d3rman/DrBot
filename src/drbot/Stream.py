@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Callable, Iterable, Any
     from .storage import StorageDict
-    from .Botling import Botling
 
 T = TypeVar("T")
 
@@ -17,8 +16,8 @@ T = TypeVar("T")
 class ObserverBundle(Generic[T]):
     """A class used to hold information about a subscribed observer."""
 
-    def __init__(self, botling: Botling, handler: Callable[[T], None], start_run: Callable[[], None] | None = None) -> None:
-        self.botling = botling
+    def __init__(self, observer: Regi, handler: Callable[[T], None], start_run: Callable[[], None] | None = None) -> None:
+        self.observer = observer
         self.handler = handler
         self.start_run = start_run
 
@@ -26,7 +25,7 @@ class ObserverBundle(Generic[T]):
     def name(self):
         """A helper that gets a human-readable name for the observer (including the Botling name and the function names)."""
         def get_name(func: Callable[[Any], Any]): getattr(func, "__name__", getattr(func, "__qualname__", repr(func)))  # Handle lambdas and such
-        return f"{self.botling.name} ({get_name(self.handler)}" + (f", {get_name(self.start_run)}" if self.start_run else "") + ")"
+        return f'"{self.observer.name}" ({get_name(self.handler)}' + (f", {get_name(self.start_run)}" if self.start_run else "") + ")"
 
 
 class Stream(Regi, Generic[T]):
@@ -43,6 +42,11 @@ class Stream(Regi, Generic[T]):
         Not the same as is_alive - death is permanent, inactivity is not."""
         return len(self.__observers) > 0
 
+    def die(self) -> None:
+        super().die()
+        for bundle in self.__observers:
+            bundle.observer.dependency_died(self)
+
     def accept_registration(self, storage: StorageDict, setup: bool = True) -> None:
         super().accept_registration(storage, setup=False)
 
@@ -53,11 +57,15 @@ class Stream(Regi, Generic[T]):
         if setup:
             self.setup()
 
-    def subscribe(self, botling: Botling, handler: Callable[[T], None], start_run: Callable[[], None] | None = None) -> ObserverBundle[T]:
+    def subscribe(self, observer: Regi, handler: Callable[[T], None], start_run: Callable[[], None] | None = None) -> ObserverBundle[T] | None:
         """Subscribe an observer with the stream.
         Optionally, you can also pass a start_run function that is run when we get a new batch of items (most useful for invalidating caches).
-        Returns an ObserverBundle which you can keep if you want to unsubscribe later."""
-        bundle = ObserverBundle(botling, handler, start_run)
+        Returns an ObserverBundle which you can keep if you want to unsubscribe later, or None if subscribing failed."""
+        if not self.is_alive:
+            log.debug(f"{observer.kind} {name_of(observer)} tried to subscribe to Stream {name_of(self)}, but the stream is dead.")
+            observer.dependency_died(self)
+            return
+        bundle = ObserverBundle(observer, handler, start_run)
         self.__observers.append(bundle)
         log.debug(f"Observer {bundle.name} subscribed to Stream {name_of(self)}.")
         return bundle
@@ -88,7 +96,7 @@ class Stream(Regi, Generic[T]):
         # Let all the handlers know we're starting a new run
         for i in reversed(range(len(self.__observers))):  # Reversed iteration since we may remove some items
             bundle = self.__observers[i]
-            if not bundle.botling.is_alive:
+            if not bundle.observer.is_alive:
                 log.debug(f"Unsubscribing observer {bundle.name} from Stream {name_of(self)} since it is dead.")
                 del self.__observers[i]
             if bundle.start_run:
@@ -96,24 +104,24 @@ class Stream(Regi, Generic[T]):
                 try:
                     bundle.start_run()
                 except Exception:
-                    bundle.botling.die()
-                    del self.__observers[i]
                     log.exception(f"Observer {bundle.name} of Stream {name_of(self)} crashed during start_run.")
+                    bundle.observer.die()
+                    del self.__observers[i]
 
         # Process items
         for item in items:
             log.debug(f"Stream {name_of(self)} handling item {self.id(item)}")
             for i in reversed(range(len(self.__observers))):  # Reversed iteration since we may remove some items
                 bundle = self.__observers[i]
-                if not bundle.botling.is_alive:
+                if not bundle.observer.is_alive:
                     log.debug(f"Unsubscribing observer {bundle.name} from Stream {name_of(self)} since it is dead.")
                     del self.__observers[i]
                 try:
                     bundle.handler(item)
                 except Exception:
-                    bundle.botling.die()
-                    del self.__observers[i]
                     log.exception(f"Observer {bundle.name} of Stream {name_of(self)} crashed during handler.")
+                    bundle.observer.die()
+                    del self.__observers[i]
             self.storage["last_processed"] = self.id(item)
 
         # Save our storage right now to make sure we don't reprocess any items,

@@ -36,6 +36,11 @@ class Streams:
         """Add a custom stream, accessible via DR.streams.custom["name"]."""
         self.custom[stream.name] = stream
 
+    def remove(self, stream: Stream[Any]) -> None:
+        if stream.name in self.custom:
+            log.debug(f"Removing Stream {name_of(stream)}.")
+            del self.custom[stream.name]
+
     def register_standard(self) -> None:
         """This is an internal method and should not be called.
         Register all standard streams once DrBot is ready.
@@ -54,7 +59,12 @@ class Streams:
 
 
 class DrBot:
-    """TBD"""
+    """The main DrBot class. Use it like this:
+
+    drbot = DrBot()
+    drbot.register(Botling1())
+    drbot.register(Botling2())
+    drbot.run()"""
 
     def __init__(self) -> None:
         self.storage = DataStore()
@@ -64,21 +74,29 @@ class DrBot:
 
         log.debug("DrBot initialized.")
 
-    def register(self, regi: SubRegi) -> SubRegi:
+    def register(self, regi: SubRegi) -> SubRegi | None:
         """Register a registerable object (i.e. Botling or Stream) with DrBot.
-        Returns the object back for convenience."""
-        # TBD Dupe check. For streams, make sure to check for dupes across both standard and custom
-        log.debug(f"Registering {regi.kind}: {name_of(regi)}.")
-        SettingsManager().process_settings(regi)
-        if isinstance(regi, Botling):
-            self.botlings.append(regi)
-            regi.DR = DrBotRep(self, regi)
-        elif isinstance(regi, Stream):
-            self.streams.add(regi)
-        else:
-            raise ValueError(f"Can't register object of unknown type: {type(regi)}")
-        regi.accept_registration(self.storage[regi])
-        return regi
+        Returns the object back for convenience, or None if registration failed."""
+        try:
+            # TBD Dupe check. For streams, make sure to check for dupes across both standard and custom
+            log.debug(f"Registering {regi.kind}: {name_of(regi)}.")
+            SettingsManager().process_settings(regi)
+            if isinstance(regi, Botling):
+                self.botlings.append(regi)
+                regi.DR = DrBotRep(self, regi)
+            elif isinstance(regi, Stream):
+                self.streams.add(regi)
+            else:
+                raise ValueError(f"Can't register object of unknown type: {type(regi)}")
+            regi.accept_registration(self.storage[regi])
+            return regi
+        except Exception:
+            log.exception(f"{regi.kind} {name_of(regi)} crashed during registration.")
+            regi.die()
+            if isinstance(regi, Botling) and regi in self.botlings:
+                self.botlings.remove(regi)
+            elif isinstance(regi, Stream):
+                self.streams.remove(regi)
 
     def run(self) -> None:
         """DrBot's main loop. Call this once all Botlings have been registered. Will run forever."""
@@ -97,8 +115,12 @@ class DrBot:
         # Regularly poll all streams
         def poll_streams():
             for stream in self.streams:
-                if stream.is_active:
-                    stream.run()  # Error guard?
+                if stream.is_alive and stream.is_active:
+                    try:
+                        stream.run()
+                    except Exception:
+                        log.exception(f"Stream {name_of(stream)} crashed during polling.")
+                        stream.die()
         schedule.every(10).seconds.do(poll_streams)  # TBD generalize polling intervals (vary by stream?)
 
         log.info("DrBot is online.")

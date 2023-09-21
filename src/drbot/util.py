@@ -46,4 +46,4 @@ class Singleton:
 
 def name_of(o: Any) -> str:
     """A helper to get the name of an object alongside its class name."""
-    return f"{o.name} ({o.__class__.__name__})"
+    return f'"{o.name}" ({o.__class__.__name__})'
