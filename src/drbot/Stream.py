@@ -142,7 +142,8 @@ class Stream(Regi, Generic[T]):
     def get_latest_item(self) -> T | None:
         """Get the latest item. Used for setting the initial last_processed,
         so you don't process items stretching backwards forever on the first run.
-        If you don't return an item (or don't implement this), it will in fact process backwards forever."""
+        If you don't return an item (or don't implement this), it will in fact process backwards forever.
+        It's OK to return an item that would be skipped by skip_item(), so long as it's one that will be returned by your get_items()."""
         pass
 
     def skip_item(self, item: T) -> bool:
