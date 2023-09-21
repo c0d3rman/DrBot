@@ -24,17 +24,21 @@ class Streams:
 
     def __init__(self, drbot: DrBot) -> None:
         self.__drbot = drbot
-        self.custom: dict[str, Stream[Any]] = {}
-        self.__standard: list[Stream[Any]] = []
+        self.custom: dict[str, Stream[Any]] = {}  # This actually contains all streams including the standard ones, to allow access via string (e.g. streams.custom["PostStream"]) and simplify the logic
+        self.__standard: list[Stream[Any]] = []  # This only holds standard streams until they're registered
 
         # All standard streams are initialized and registered here.
-        self.modmail = self.__add(ModmailStream())
-        self.post = self.__add(PostStream())
-        self.modlog = self.__add(ModlogStream())
+        self.modmail = self.__pre_add(ModmailStream())
+        self.post = self.__pre_add(PostStream())
+        self.modlog = self.__pre_add(ModlogStream())
 
     def add(self, stream: Stream[Any]) -> None:
         """Add a custom stream, accessible via DR.streams.custom["name"]."""
         self.custom[stream.name] = stream
+
+    def append(self, stream: Stream[Any]) -> None:
+        """Alias of add() for streamlining of registration logic."""
+        self.add(stream)
 
     def remove(self, stream: Stream[Any]) -> None:
         if stream.name in self.custom:
@@ -48,14 +52,20 @@ class Streams:
         for stream in self.__standard:
             self.__drbot.register(stream)
 
-    def __add(self, stream: Stream[Any]) -> Stream[Any]:
-        """Add a standard stream, putting it in __standard so we can iterate over all streams in __iter__."""
+    def __pre_add(self, stream: Stream[Any]) -> Stream[Any]:
+        """Add a standard stream, putting it in __standard so it can be registered later."""
         self.__standard.append(stream)
         return stream
 
     def __iter__(self) -> Iterator[Stream[Any]]:
-        yield from self.__standard
-        yield from self.custom.values()
+        return iter(self.custom.values())
+
+    def __contains__(self, item: Any) -> bool:
+        if isinstance(item, str):
+            return item in self.custom
+        if isinstance(item, Stream):
+            return item in self.custom.values()
+        return False
 
 
 class DrBot:
@@ -77,26 +87,34 @@ class DrBot:
     def register(self, regi: SubRegi) -> SubRegi | None:
         """Register a registerable object (i.e. Botling or Stream) with DrBot.
         Returns the object back for convenience, or None if registration failed."""
+        l = []  # In case we error before setting it
         try:
-            # TBD Dupe check. For streams, make sure to check for dupes across both standard and custom
-            log.debug(f"Registering {regi.kind}: {name_of(regi)}.")
-            SettingsManager().process_settings(regi)
+            log.debug(f"Registering {regi.kind} {name_of(regi)}.")
+            # Get the relevant collection we're registering to
             if isinstance(regi, Botling):
-                self.botlings.append(regi)
-                regi.DR = DrBotRep(self, regi)
+                l = self.botlings
             elif isinstance(regi, Stream):
-                self.streams.add(regi)
+                l = self.streams
             else:
                 raise ValueError(f"Can't register object of unknown type: {type(regi)}")
+
+            # Check for dupes
+            if regi in l:
+                log.warning(f"Ignored attempt to register the already-registered {regi.kind} {name_of(regi)}.")
+                return regi
+
+            # Actually register
+            SettingsManager().process_settings(regi)
+            l.append(regi)
+            if isinstance(regi, Botling):  # Must happen separately from the above check because we don't want to mutate before the dupe check
+                regi.DR = DrBotRep(self, regi)
             regi.accept_registration(self.storage[regi])
             return regi
         except Exception:
             log.exception(f"{regi.kind} {name_of(regi)} crashed during registration.")
             regi.die()
-            if isinstance(regi, Botling) and regi in self.botlings:
-                self.botlings.remove(regi)
-            elif isinstance(regi, Stream):
-                self.streams.remove(regi)
+            if regi in l:
+                l.remove(regi)
 
     def run(self) -> None:
         """DrBot's main loop. Call this once all Botlings have been registered. Will run forever."""
