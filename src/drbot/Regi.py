@@ -15,6 +15,8 @@ class Regi(ABC):
     particularly dealing with registration with DrBot and graceful error handling.
     The name is short for "Registerable"."""
 
+    __names: dict[str, set[str]] = {}
+
     # If you want your Regi to have settings, override this property and define its default settings.
     # WARNING: due to the limitations of TOML, this does not support None. Do not put None anywhere in here.
     default_settings: dict[str, Any] = {}
@@ -24,6 +26,15 @@ class Regi(ABC):
         You can set json_encoder and json_decoder to custom ones in __init__ if you want custom serialization."""
         self.__kind = kind
         self.__name = name or self.__class__.__name__
+
+        # Enforce unique names among kind
+        if kind not in self.__names:
+            self.__names[kind] = set()
+        if self.__name in self.__names[kind]:
+            raise ValueError(f"{kind} with name '{self.__name}' already exists.")
+        else:
+            self.__names[kind].add(self.__name)
+
         self.__is_alive = True
         self.__is_registered = False
         self.json_encoder = self.json_decoder = None
@@ -46,7 +57,7 @@ class Regi(ABC):
         """The Regi's name. Each Regi must have a unique name within its kind.
         Equal to the class name by default."""
         return self.__name
-    
+
     @property
     def kind(self) -> str:
         """The Regi's kind, i.e. Botling or Stream."""
@@ -66,7 +77,7 @@ class Regi(ABC):
     def die(self) -> None:
         """Kill the Regi. Should only be used if it errors."""
         self.__is_alive = False
-    
+
     def dependency_died(self, dependency: Regi) -> None:
         """Called when a dependency of yours dies. By default, you die as well.
         You can override this if you want to be resilient to dependencies dying, but you'll have to make sure you use them carefully."""
