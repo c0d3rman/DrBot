@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Iterable
 from datetime import datetime, timezone
 from praw.models import ModmailConversation
-from praw.models.reddit.modmail import ModmailConversation
 from ..reddit import reddit
 from .TimeGuardedStream import TimeGuardedStream
 

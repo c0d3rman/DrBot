@@ -10,7 +10,7 @@ from .storage import DataStore
 from .settings import SettingsManager, settings
 from .Botling import Botling
 from .Stream import Stream
-from .streams import ModmailStream, PostStream, ModlogStream
+from .streams import ModmailStream, PostStream, ModlogStream, CommentStream
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -30,6 +30,7 @@ class Streams:
         # All standard streams are initialized and registered here.
         self.modmail = self.__pre_add(ModmailStream())
         self.post = self.__pre_add(PostStream())
+        self.comment = self.__pre_add(CommentStream())
         self.modlog = self.__pre_add(ModlogStream())
 
     def add(self, stream: Stream[Any]) -> None:
