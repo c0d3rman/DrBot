@@ -51,8 +51,10 @@ class Stream(Regi, Generic[T]):
         super().accept_registration(storage, setup=False)
 
         # Initialize last_processed
-        latest = self.get_latest_item()
-        self.storage["last_processed"] = None if latest is None else self.id(latest)
+        if not "last_processed" in self.storage:
+            latest = self.get_latest_item()
+            self.storage["last_processed"] = None if latest is None else self.id(latest)
+            log.debug(f"Initialized last_processed for {self.kind} {name_of(self)} - {self.storage['last_processed']}")
 
         if setup:
             self.setup()
