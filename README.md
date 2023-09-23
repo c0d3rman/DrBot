@@ -1,7 +1,20 @@
-# DrBot - a points-to-ban Reddit moderation bot
+# DrBot - A modular Reddit bot to cure your moderation woes.
 
 
-DrBot is a reddit bot that automatically monitors a subreddit and tracks removals. Each removal of a user's submission gives that user a certain number of points, and once their points hit some threshold, the bot takes action, either by notifying the mods or automatically banning the user.
+DrBot is a modular reddit bot framework for automatically performing moderation tasks. It allows you to command a small army of Botlings to do things like:
+
+- Tracking user rule violations to identify and/or ban repeat offenders
+- Giving users a list of the removals that got them banned
+- Adding mobile-compatible links to all your modmails
+- Telling you when the admins do something on your sub
+- Keeping your old-reddit and new-reddit sidebars in sync
+- Enforcing special user flair requirements across your sub
+- Detecting and warning about cases of self-moderation
+- Placing special restrictions on post flair based on the day of the week
+
+You can also build your own Botlings to do anything you want, with automatically managed settings, wiki-synced storage, easy access to Streams of new comments/posts/modmail/other stuff, and more.
+
+Subreddits take a lot of work to run and most could benefit from automation, but each sub has its own set of particular tasks and requirements. DrBot aims to be a one-stop shop for building and customizing the perfect bot for any sub with minimal coding.
 
 A script that runs DrBot might look like this:
 
@@ -11,15 +24,7 @@ A script that runs DrBot might look like this:
 
 ## Setup
 
-1. Clone this repo and cd inside.
-2. `pip install -r requirements.txt`
-3. Run first-time setup: `python first_time_setup.py`. This will also create a settings file for you.
-4. Change any other settings you want in `data/settings.toml`.
-5. Run the bot: `python main.py`
-
-## Caveats
-
-Re-approving and then re-deleting a comment deletes the removal reason on reddit's side, so if you do this, be aware that DRBOT will treat the removal as having no reason as well.
+TBD
 
 &nbsp;
 
