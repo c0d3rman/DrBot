@@ -1,4 +1,4 @@
-# DrBot - A modular Reddit bot to cure your moderation woes.
+# DrBot: A modular Reddit bot to cure your moderation woes.
 
 
 DrBot is a modular reddit bot framework for automatically performing moderation tasks. It allows you to command a small army of Botlings to do things like:
