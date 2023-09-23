@@ -24,8 +24,8 @@ class ObserverBundle(Generic[T]):
     @property
     def name(self):
         """A helper that gets a human-readable name for the observer (including the Botling name and the function names)."""
-        def get_name(func: Callable[[Any], Any]): getattr(func, "__name__", getattr(func, "__qualname__", repr(func)))  # Handle lambdas and such
-        return f'"{self.observer.name}" ({get_name(self.handler)}' + (f", {get_name(self.start_run)}" if self.start_run else "") + ")"
+        def get_name(func: Callable[[Any], Any]): return getattr(func, "__name__", getattr(func, "__qualname__", repr(func)))  # Handle lambdas and such
+        return f'"{self.observer.name}" (handler: {get_name(self.handler)}' + (f", start_run: {get_name(self.start_run)}" if self.start_run else "") + ")"
 
 
 class Stream(Regi, Generic[T]):
