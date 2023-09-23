@@ -1,9 +1,12 @@
 from __future__ import annotations
-from typing import Iterable
 from datetime import datetime, timezone
 from praw.models import Comment
 from ..reddit import reddit
 from .TimeGuardedStream import TimeGuardedStream
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Iterable
 
 
 class CommentStream(TimeGuardedStream[Comment]):
@@ -16,9 +19,7 @@ class CommentStream(TimeGuardedStream[Comment]):
         return item.id
 
     def timestamp(self, item: Comment) -> datetime:
-        return datetime.fromtimestamp(item.created_utc).astimezone(timezone.utc)
+        return datetime.fromtimestamp(item.created_utc, timezone.utc)
 
     def get_latest_item(self) -> Comment | None:
         return next(reddit.sub.comments(limit=1), None)
-
-    # Skip own comments?
