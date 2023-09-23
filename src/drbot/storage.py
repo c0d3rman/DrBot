@@ -77,13 +77,19 @@ class DataStore:
     def to_json(self) -> str:
         """Dump the DataStore to JSON.
         The data is stored with two layers of JSON dumping - each StorageDict is made into a JSON string, and then the overall dict of names to stringified StorageDicts is made into a JSON string.
-        We do it this way to allow each Botling to specify custom JSON encoding/decoding without interfering with the others, and so that we can load the data first and then register Botlings one by one."""
+        We do it this way to allow each Botling to specify custom JSON encoding/decoding without interfering with the others, and so that we can load the data first and then register Botlings one by one.
+        Empty storage dicts are omitted."""
 
         out = copy.deepcopy(self.__raws)  # Preserve any unparsed raws
         for k, d in self.__dicts.items():
             if not k in out:
                 out[k] = {}
-            out[k].update({k2: d2.to_json() for k2, d2 in d.items()})
+            for k2, d2 in d.items():
+                if not d2:  # Omit empty dicts
+                    if k2 in out[k]:
+                        del out[k][k2]  # Delete empty parsed raws if present
+                    continue
+                out[k][k2] = d2.to_json()
         return json.dumps(out)
 
     def save(self) -> None:
@@ -171,7 +177,7 @@ class DataStore:
             log.critical(e)
             raise e
 
-        # Special process if the page is empty - if something breaks we tell users to delete everything in the page, and we just pretend the page isn't there.
+        # TBD: Special process if the page is empty - if something breaks we tell users to delete everything in the page, and we just pretend the page isn't there.
 
         data = re.sub(r"^//.*?\n", "", data)  # Remove comments
         try:
