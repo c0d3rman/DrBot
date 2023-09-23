@@ -175,9 +175,13 @@ class SettingsManager(Singleton):
         target.settings = DotDict(self.merge_settings(settings, secrets))
 
         # Write the settings back to disk (saving newly-initialized defaults and removing discarded keys)
-        os.makedirs(settings_dir, exist_ok=True)
-        self.write_file(settings_path, settings)
-        self.write_file(secrets_path, secrets)
+        # We skip writing empty files
+        if settings or secrets:
+            os.makedirs(settings_dir, exist_ok=True)
+        if settings:
+            self.write_file(settings_path, settings)
+        if secrets:
+            self.write_file(secrets_path, secrets)
 
         # Validate the settings
         target.validate_settings()
