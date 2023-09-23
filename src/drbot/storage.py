@@ -173,10 +173,6 @@ class DataStore:
 
         # Special process if the page is empty - if something breaks we tell users to delete everything in the page, and we just pretend the page isn't there.
 
-        data = "{}"
-        # data = """{"_meta": {"DrBot": "{\\"version\\": \\"2.0.0\\"}"}, "Stream": {"ModmailStream": "{\\"last_processed\\": \\"1i16bn\\", \\"last_processed_time\\": {\\"$date\\": \\"2023-05-01T21:55:54.311000+00:00\\"}}", "PostStream": "{\\"last_processed\\": {\\"$date\\": \\"2023-09-05T06:27:04+00:00\\"}}", "CommentStream": "{\\"last_processed\\": \\"jzhtgtg\\", \\"last_processed_time\\": {\\"$date\\": \\"0001-01-01T00:00:00+00:00\\"}}", "ModlogStream": "{\\"last_processed\\": \\"ModAction_34e6b6b5-4d4a-11ee-acf1-e763914a56b2\\"}"}, "Botling": {"Testling": "{}"}}"""
-        # data = """{"_meta": {"DrBot": "{\\"version\\": \\"2.0.0\\"}"}, "Stream": {"ModmailStream": "{\\"last_processed\\": \\"1i16bn\\", \\"last_processed_time\\": {\\"$date\\": \\"2023-05-13T22:04:17.805000+00:00\\"}}", "PostStream": "{\\"last_processed\\": {\\"$date\\": \\"2023-09-05T06:27:04+00:00\\"}}", "CommentStream": "{\\"last_processed\\": \\"jzhtgtg\\", \\"last_processed_time\\": {\\"$date\\": \\"0001-01-01T00:00:00+00:00\\"}}", "ModlogStream": "{\\"last_processed\\": \\"ModAction_34e6b6b5-4d4a-11ee-acf1-e763914a56b2\\"}"}, "Botling": {"Testling": "{}"}}"""
-
         data = re.sub(r"^//.*?\n", "", data)  # Remove comments
         try:
             self.__raws = json.loads(data)
