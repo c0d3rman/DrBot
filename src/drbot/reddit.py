@@ -68,85 +68,94 @@ class DrReddit(praw.Reddit, Singleton):
         super().__init__(*args, **kwargs)
         # self._core = DryRunSession(self._core._authorizer)
         self._core._retry_strategy_class = InfiniteRetryStrategy
+        self.DR = self._DrRedditHelper(self)
 
     @property
     def sub(self) -> praw.reddit.models.SubredditHelper:
         return self.subreddit(settings.subreddit)
 
-    def user_exists(self, username: str) -> bool:
-        """Check if a user exists on reddit."""
-        try:
-            self.redditor(username).fullname
-        except prawcore.exceptions.NotFound:
-            return False  # Account deleted
-        except AttributeError:
-            return False  # Account suspended
-        else:
-            return True
+    class _DrRedditHelper():
+        """A helper that contains a bunch of convenient reddit functions for use by Botlings and other DrBot components."""
 
-    def page_exists(self, page: str) -> bool:
-        """Check if a wiki page exists on reddit."""
-        try:
-            self.sub.wiki[page].may_revise
-            return True
-        except prawcore.exceptions.NotFound:
-            return False
+        def __init__(self, reddit: DrReddit):
+            self._reddit = reddit
 
-    def get_thing(self, fullname: str) -> praw.reddit.models.Comment | praw.reddit.models.Submission:
-        """For getting a comment or submission from a fullname when you don't know which one it is."""
-        if fullname.startswith("t1_"):
-            return self.comment(fullname)
-        elif fullname.startswith("t3_"):
-            return self.submission(fullname[3:])  # PRAW requires us to chop off the "t3_"
-        else:
-            raise ValueError(f"Unknown fullname type: {fullname}")
+        def user_exists(self, username: str) -> bool:
+            """Check if a user exists on reddit."""
+            try:
+                self._reddit.redditor(username).fullname
+            except prawcore.exceptions.NotFound:
+                return False  # Account deleted
+            except AttributeError:
+                return False  # Account suspended
+            else:
+                return True
 
-    def send_modmail(self, subject: str, body: str, recipient: praw.reddit.models.Redditor | str | None = None, add_common: bool = True, archive: bool = False, **kwargs: Any) -> praw.reddit.models.ModmailConversation | None:
-        """Sends modmail, handling dry_run mode.
-        Creates a moderator discussion by default if a recipient is not provided."""
-        log.info("Would have sent modmail:")
-        log.info(subject)
-        log.info(body)
+        def wiki_exists(self, page: str) -> bool:
+            """Check if a wiki page exists on reddit."""
+            try:
+                self._reddit.sub.wiki[page].may_revise
+                return True
+            except prawcore.exceptions.NotFound:
+                return False
 
-    #     # Add common elements
-    #     if add_common:
-    #         subject = "DrBot: " + subject
-    #         body += "\n\n(This is an automated message by [DrBot](https://github.com/c0d3rman/DRBOT).)"
+        def get_thing(self, fullname: str) -> praw.reddit.models.Comment | praw.reddit.models.Submission:
+            """For getting a comment or submission from a fullname when you don't know which one it is."""
+            if fullname.startswith("t1_"):
+                return self._reddit.comment(fullname)
+            elif fullname.startswith("t3_"):
+                return self._reddit.submission(fullname[3:])  # PRAW requires us to chop off the "t3_"
+            else:
+                raise ValueError(f"Unknown fullname type: {fullname}")
 
-    #     # Hide username by default in modmails to users
-    #     if not recipient is None and not 'author_hidden' in kwargs:
-    #         kwargs['author_hidden'] = True
+        def send_modmail(self, subject: str, body: str, recipient: praw.reddit.models.Redditor | str | None = None, add_common: bool = True, archive: bool = False, **kwargs: Any) -> praw.reddit.models.ModmailConversation | None:
+            """Sends modmail while handling adding common DrBot elements and such.
+            Creates a moderator discussion by default if a recipient is not provided."""
 
-    #     if settings.dry_run:
-    #         log.info(f"""[DRY RUN: would have sent the following modmail:
-    # Subject: "{subject}"
-    # {body}]""")
-    #         # Create a fake modmail to return so as to not break callers that need one in dry run mode
-    #         def fake_modmail(): return None
-    #         fake_modmail.id = f"fakeid_{uuid4().hex}"
-    #         return fake_modmail
-    #     else:
-    #         log.info(f'Sending modmail {"as mod discussion " if recipient is None else f"to u/{recipient} "}with subject "{subject}"')
-    #         log.debug(f"""Sending modmail:
-    # Recipient: {"mod discussion" if recipient is None else f"u/{recipient}"}
-    # Subject: "{subject}"
-    # {body}""")
+            # Add common elements
+            if add_common:
+                subject = "DrBot: " + subject
+                body += "\n\n(This is an automated message by [DrBot](https://github.com/c0d3rman/DRBOT).)"
 
-    #         if len(body) > 10000:
-    #             log.warning(f'Modlog "{subject}" over maximum length, truncating.')
-    #             trailer = "... [truncated]"
-    #             body = body[:10000 - len(trailer)] + trailer
+            # Hide username by default in modmails to users
+            if not recipient is None and not 'author_hidden' in kwargs:
+                kwargs['author_hidden'] = True
 
-    #         modmail = self.sub.modmail.create(subject=subject, body=body, recipient=recipient, **kwargs)
-    #         if archive:
-    #             modmail.archive()
-    #         return modmail
+            # Truncate if necessary
+            if len(body) > 10000:
+                log.warning(f'Modlog "{subject}" over maximum length, truncating.')
+                trailer = "... [truncated]"
+                body = body[:10000 - len(trailer)] + trailer
+            
+            log.info(f'Sending modmail {"as mod discussion " if recipient is None else f"to u/{recipient} "}with subject "{subject}"')
 
-    # def is_mod(self, username: str | praw.reddit.models.Redditor) -> bool:
-    #     """Check if a user is a mod in your sub."""
-    #     if isinstance(username, praw.reddit.models.Redditor):
-    #         username = username.name
-    #     return len(self.sub.moderator(username)) > 0
+            if settings.dry_run:
+                log.debug(f"""DRY RUN: would have sent the following modmail:
+Recipient: {"mod discussion" if recipient is None else f"u/{recipient}"}
+Subject: "{subject}"
+{body}""")
+                
+                # Create a fake modmail to return so as to not break callers that need one in dry run mode
+                def fake_modmail(): return None
+                fake_modmail.id = f"fakeid_{uuid4().hex}"
+                return fake_modmail
+            else:
+                raise NotImplementedError()
+                log.debug(f"""Sending modmail:
+Recipient: {"mod discussion" if recipient is None else f"u/{recipient}"}
+Subject: "{subject}"
+{body}""")
+
+                modmail = self._reddit.sub.modmail.create(subject=subject, body=body, recipient=recipient, **kwargs)
+                if archive:
+                    modmail.archive()
+                return modmail
+
+        def is_mod(self, username: str | praw.reddit.models.Redditor) -> bool:
+            """Check if a user is a mod in your sub."""
+            if isinstance(username, praw.reddit.models.Redditor):
+                username = username.name
+            return len(self._reddit.sub.moderator(username)) > 0
 
 
 # Log in to reddit and initialize the singleton

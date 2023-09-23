@@ -89,7 +89,7 @@ class ModmailLoggingHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
-            self.reddit.send_modmail(subject=f"Encountered a{'n' if record.levelname[0].lower() in 'aeiou' else ''} {record.levelname} level error", body=self.format(record))
+            self.reddit.DR.send_modmail(subject=f"Encountered a{'n' if record.levelname[0].lower() in 'aeiou' else ''} {record.levelname} level error", body=self.format(record))
         except Exception:
             self.handleError(record)
 

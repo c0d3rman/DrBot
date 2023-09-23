@@ -44,6 +44,7 @@ class DataStore:
     Generates StorageDicts for Botlings and handles saving and loading their data to the wiki."""
 
     MAX_PAGE_SIZE = 524288  # Experimentally verified
+    _default_meta = {"version": "2.0.0"}
 
     def __init__(self):
         self.WIKI_PAGE: str = settings.storage.wiki_page
@@ -89,24 +90,25 @@ class DataStore:
         """Saves data to the wiki (and stores a local backup)."""
 
         # First time setup - wiki page creation
-        if not reddit.page_exists(self.WIKI_PAGE):
+        if not reddit.DR.wiki_exists(self.WIKI_PAGE):
             log.info(f"Creating necessary wiki pages.")
 
-            # if settings.dry_run:
-            #     log.info("[DRY RUN: would have created wiki pages.]")
-            #     return
+            if settings.dry_run:
+                log.info("DRY RUN: would have created wiki pages.")
+                return
 
-            # self.reddit.sub.wiki.create(
-            #     name=self.WIKI_PAGE,
-            #     content="This page and its children house the data for [DrBot](https://github.com/c0d3rman/DRBOT). Do not edit.",
-            #     reason="Automated page for DrBot")
-            # self.reddit.sub.wiki[self.WIKI_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
+            raise NotImplementedError()
+            reddit.sub.wiki.create(
+                name=self.WIKI_PAGE,
+                content="This page and its children house the data for [DrBot](https://github.com/c0d3rman/DRBOT). Do not edit.",
+                reason="Automated page for DrBot")
+            reddit.sub.wiki[self.WIKI_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
 
-            # self.reddit.sub.wiki.create(
-            #     name=self.DATA_PAGE,
-            #     content="",
-            #     reason="Automated page for DrBot")
-            # self.reddit.sub.wiki[self.DATA_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
+            reddit.sub.wiki.create(
+                name=self.DATA_PAGE,
+                content="",
+                reason="Automated page for DrBot")
+            reddit.sub.wiki[self.DATA_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
 
         dump = f"// This page houses [DrBot](https://github.com/c0d3rman/DRBOT)'s records. **DO NOT EDIT!**\n\n{self.to_json()}"
 
@@ -121,26 +123,27 @@ class DataStore:
                 f.write(dump)
 
         # Don't write if there's no change
-        # try:
-        #     data = self.reddit.sub.wiki[self.DATA_PAGE].content_md
-        # except NotFound:
-        #     log.error(f"Somehow, tried to save wiki page {self.DATA_PAGE} without it existing. This shouldn't happen.")
-        #     return
-        # else:
-        #     if data == dump:
-        #         log.debug("Not saving to wiki because it's already identical to what we would save.")
-        #         return
+        try:
+            data = reddit.sub.wiki[self.DATA_PAGE].content_md
+        except NotFound:
+            log.error(f"Somehow, tried to fetch wiki page {self.DATA_PAGE} without it existing. This shouldn't happen.")
+            return
+        else:
+            if data == dump:
+                log.debug("Not saving to wiki because it's already identical to what we would have saved.")
+                return
 
         log.info("Saving data to wiki.")
 
-        # if settings.dry_run:
-        #     log.info("[DRY RUN: would have saved some data to the wiki.]")
-        #     log.debug(f"Data that would be saved:\n\n{dump}")
-        #     return
+        if settings.dry_run:
+            log.info("DRY RUN: would have saved some data to the wiki.")
+            log.debug(f"Data that would be saved:\n\n{dump}")
+            return
 
-        # self.reddit.sub.wiki[self.DATA_PAGE].edit(
-        #     content=dump,
-        #     reason="Automated page for DrBot")
+        raise NotImplementedError()
+        reddit.sub.wiki[self.DATA_PAGE].edit(
+            content=dump,
+            reason="Automated page for DrBot")
 
     def _load(self) -> None:
         """This is an internal method and should not be called.
@@ -153,34 +156,44 @@ class DataStore:
             raise RuntimeError("Do not manually call _load! To avoid clobbering your data, DataStore cannot load data after initialization.")
         self.__loaded = True
 
-        # if not reddit.page_exists(self.DATA_PAGE):
-        #     log.info("Couldn't load data from the wiki because no wiki page exists. If this is your first time running DrBot, this is normal. If not then there is some sort of issue.")
-        #     return
+        if not reddit.DR.wiki_exists(self.DATA_PAGE):
+            log.warning(f"Couldn't load data from the wiki because no wiki page '{self.DATA_PAGE}' exists. If this is your first time running DrBot, this is normal. If not then there is some sort of issue.")
+            return
 
         log.info("Loading data from wiki.")
-        # try:
-        #     data = self.reddit.sub.wiki[self.DATA_PAGE].content_md
-        # except NotFound:
-        #     # if settings.dry_run:
-        #     #     log.info("[DRY RUN: because dry-run mode is active, no wiki pages have been created, so no data was loaded from the wiki.]")
-        #     #     return
-        #     raise Exception("Couldn't load data from wiki because the necessary pages don't exist! Are you trying to manually call _load()?")
+        try:
+            data = reddit.sub.wiki[self.DATA_PAGE].content_md
+        except NotFound:
+            if settings.dry_run:
+                log.info("DRY RUN: because dry-run mode is active, no wiki pages were created, so no data was loaded from the wiki.")
+                return
+            e = RuntimeError("Wiki pages don't exist even though we checked for them - this shouldn't happen.")
+            log.critical(e)
+            raise e
 
         # Special process if the page is empty - if something breaks we tell users to delete everything in the page, and we just pretend the page isn't there.
 
         data = "{}"
+        # data = """{"_meta": {"DrBot": "{\\"version\\": \\"2.0.0\\"}"}, "Stream": {"ModmailStream": "{\\"last_processed\\": \\"1i16bn\\", \\"last_processed_time\\": {\\"$date\\": \\"2023-05-01T21:55:54.311000+00:00\\"}}", "PostStream": "{\\"last_processed\\": {\\"$date\\": \\"2023-09-05T06:27:04+00:00\\"}}", "CommentStream": "{\\"last_processed\\": \\"jzhtgtg\\", \\"last_processed_time\\": {\\"$date\\": \\"0001-01-01T00:00:00+00:00\\"}}", "ModlogStream": "{\\"last_processed\\": \\"ModAction_34e6b6b5-4d4a-11ee-acf1-e763914a56b2\\"}"}, "Botling": {"Testling": "{}"}}"""
+        # data = """{"_meta": {"DrBot": "{\\"version\\": \\"2.0.0\\"}"}, "Stream": {"ModmailStream": "{\\"last_processed\\": \\"1i16bn\\", \\"last_processed_time\\": {\\"$date\\": \\"2023-05-13T22:04:17.805000+00:00\\"}}", "PostStream": "{\\"last_processed\\": {\\"$date\\": \\"2023-09-05T06:27:04+00:00\\"}}", "CommentStream": "{\\"last_processed\\": \\"jzhtgtg\\", \\"last_processed_time\\": {\\"$date\\": \\"0001-01-01T00:00:00+00:00\\"}}", "ModlogStream": "{\\"last_processed\\": \\"ModAction_34e6b6b5-4d4a-11ee-acf1-e763914a56b2\\"}"}, "Botling": {"Testling": "{}"}}"""
 
         data = re.sub(r"^//.*?\n", "", data)  # Remove comments
         try:
             self.__raws = json.loads(data)
         except json.JSONDecodeError as e:
-            log.critical(f"Could not decode JSON data from the wiki! If you can, manually fix the JSON issue in {self.DATA_PAGE}. If not, delete everything from the page and rerun DrBot (but this will lose all of your data). Error text:\n{e}")
+            log.critical(f"Could not decode JSON data from the wiki! If you can, manually fix the JSON issue in {self.DATA_PAGE}. If not, delete everything from the page and rerun DrBot (but this will lose all of your data). See the log for more information. Error:\n{e}")
+            log.debug(f"Problematic data:\n\n{data}")
             raise e
 
         # Load everything in _meta immediately
         if "_meta" in self.__raws:
-            self.__dicts["_meta"] = {k: StorageDict(store=self).from_json(d) for k, d in self.__raws["_meta"].items()}
-            log.debug("Loaded DataStore metadata from wiki.")
-        # Or create it if required
+            try:
+                self.__dicts["_meta"] = {k: StorageDict(store=self).from_json(d) for k, d in self.__raws["_meta"].items()}
+                log.debug("Loaded DataStore metadata from wiki.")
+            except Exception as e:
+                log.critical(f"Could not decode _meta data from the wiki! If you can, manually fix the JSON issue in {self.DATA_PAGE}. If not, delete the _meta data from the page and rerun DrBot (but this will lose any data in _meta). See the log for more information. Error:\n{e}")
+                log.debug(f"Problematic data:\n\n{self.__raws['_meta']}")
+                raise e
+        # Or create _meta if required
         else:
-            self.__dicts["_meta"] = {"DrBot": StorageDict({"version": "2.0.0"}, store=self)}
+            self.__dicts["_meta"] = {"DrBot": StorageDict(self._default_meta, store=self)}
