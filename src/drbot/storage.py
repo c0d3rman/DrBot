@@ -175,6 +175,8 @@ class DataStore:
             raise e
 
         # TBD: Special process if the page is empty - if something breaks we tell users to delete everything in the page, and we just pretend the page isn't there.
+        if data == "":
+            data = "{}"
 
         data = re.sub(r"^//.*?\n", "", data)  # Remove comments
         try:
