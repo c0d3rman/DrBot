@@ -117,4 +117,7 @@ class TemplateLoggingFormatter(logging.Formatter):
         if t == "":
             return base
         else:
+            # Prepend 4 spaces to each line for Reddit's pre-formatted blocks, since modmails don't support multiline code blocks
+            # Need to refactor this out, since this template handler is meant to be general
+            base = '\n'.join(f"    {l}" for l in base.split('\n'))
             return t.format(log=base)
