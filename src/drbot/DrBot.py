@@ -22,51 +22,50 @@ if TYPE_CHECKING:
 class Streams:
     """A helper class that holds the various Streams for DrBot to make them easy for Botlings to access."""
 
-    def __init__(self, drbot: DrBot) -> None:
-        self.__drbot = drbot
-        self.custom: dict[str, Stream[Any]] = {}  # This actually contains all streams including the standard ones, to allow access via string (e.g. streams.custom["PostStream"]) and simplify the logic
-        self.__standard: list[Stream[Any]] = []  # This only holds standard streams until they're registered
+    def __init__(self) -> None:
+        self.__streams: dict[str, Stream[Any]] = {}  # This contains all streams including the standard ones, to allow access via string (e.g. streams["PostStream"]) and simplify the logic
+        self._standard: list[Stream[Any]] = []  # This only holds standard streams until they're registered
 
-        # All standard streams are initialized and registered here.
+        # Standard streams
         self.modmail = self.__pre_add(ModmailStream())
         self.post = self.__pre_add(PostStream())
         self.comment = self.__pre_add(CommentStream())
         self.modlog = self.__pre_add(ModlogStream())
 
-    def add(self, stream: Stream[Any]) -> None:
-        """Add a custom stream, accessible via DR.streams.custom["name"]."""
-        self.custom[stream.name] = stream
-
-    def append(self, stream: Stream[Any]) -> None:
-        """Alias of add() for streamlining of registration logic."""
-        self.add(stream)
-
-    def remove(self, stream: Stream[Any]) -> None:
-        if stream.name in self.custom:
-            log.debug(f"Removing {stream}.")
-            del self.custom[stream.name]
-
-    def register_standard(self) -> None:
-        """This is an internal method and should not be called.
-        Register all standard streams once DrBot is ready.
-        Custom streams are registered as they're added."""
-        for stream in self.__standard:
-            self.__drbot.register(stream)
-
     def __pre_add(self, stream: Stream[Any]) -> Stream[Any]:
-        """Add a standard stream, putting it in __standard so it can be registered later."""
-        self.__standard.append(stream)
+        """Add a standard stream, putting it in _standard so it can be registered later."""
+        self._standard.append(stream)
         return stream
 
+    def append(self, stream: Stream[Any]) -> Stream[Any]:
+        """Add a custom Stream, accessible via `streams["name"]`.
+        Called "append" for streamlining of registration logic.
+        Returns the stream back to the caller for convenience.
+        You should not call this directly or the Stream will not be registered properly."""
+        if stream.name in self.__streams:
+            raise ValueError(f"Can't append {stream} with duplicate name")
+        self.__streams[stream.name] = stream
+        return stream
+
+    # TBD safe? necessary? (user might call it and wreak havoc)
+    def remove(self, stream: Stream[Any]) -> None:
+        if stream.name in self.__streams:
+            log.debug(f"Removing {stream}.")
+            del self.__streams[stream.name]
+
     def __iter__(self) -> Iterator[Stream[Any]]:
-        return iter(self.custom.values())
+        return iter(self.__streams.values())
 
     def __contains__(self, item: Any) -> bool:
         if isinstance(item, str):
-            return item in self.custom
+            return item in self.__streams
         if isinstance(item, Stream):
-            return item in self.custom.values()
+            return item in self.__streams.values()
         return False
+
+    def __getitem__(self, name: str) -> Stream[Any]:
+        """Get a Stream by name, e.g. `streams["PostStream"]`."""
+        return self.__streams[name]
 
 
 class DrBot:
@@ -80,8 +79,11 @@ class DrBot:
     def __init__(self) -> None:
         self.storage = DataStore()
         self.botlings: list[Botling] = []
-        self.streams = Streams(self)
-        self.streams.register_standard()
+        self.streams = Streams()
+
+        # Initialize standard streams
+        for stream in self.streams._standard:
+            self.register(stream)
 
         log.debug("DrBot initialized.")
 
