@@ -2,7 +2,6 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import TypeVar
 from ..log import log
-from ..util import name_of
 from ..Stream import Stream
 
 from typing import TYPE_CHECKING
@@ -21,7 +20,7 @@ class TimeGuardedStream(Stream[T]):
         if not "last_processed_time" in self.DR.storage:
             latest = self.get_latest_item()
             self.DR.storage["last_processed_time"] = self.timestamp(latest) if latest else None
-            log.debug(f"Initialized last_processed_time for {self.kind} {name_of(self)} - {self.DR.storage['last_processed_time']}")
+            log.debug(f"Initialized last_processed_time for {self} - {self.DR.storage['last_processed_time']}")
 
     def get_items(self) -> Iterable[T]:
         items: list[T] = []

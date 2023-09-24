@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import Any
 from abc import ABC
 from .log import log
-from .util import name_of
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -39,7 +38,7 @@ class Regi(ABC):
         self.json_encoder = self.json_decoder = None
         self.__DrBotRep = None
 
-        log.debug(f"{self.__kind} {name_of(self)} intialized.")
+        log.debug(f"{self} intialized.")
 
     @property
     def DR(self) -> DrBotRep:
@@ -53,11 +52,11 @@ class Regi(ABC):
         """This should only ever be called by DrBot.register(). Do not call it yourself.
         The setup flag is used to allow overriding this method without messing up the order of operations. setup() must be called in the override."""
         if self.__is_registered:
-            raise ValueError(f"{self.__kind} {name_of(self)} cannot be registered multiple times.")
+            raise ValueError(f"{self} cannot be registered multiple times.")
         self.__is_registered = True
         self.__DrBotRep = DR
         self.validate_settings()
-        log.debug(f"{self.__kind} {name_of(self)} registered.")
+        log.debug(f"{self} registered.")
         if setup:
             self.setup()
 
@@ -66,6 +65,10 @@ class Regi(ABC):
         """The Regi's name. Each Regi must have a unique name within its kind.
         Equal to the class name by default."""
         return self.__name
+
+    def __str__(self) -> str:
+        """A display name for the Regi, used for logging."""
+        return f'{self.kind} "{self.name}" ({self.__class__.__name__})'
 
     @property
     def kind(self) -> str:

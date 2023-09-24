@@ -6,7 +6,7 @@ import copy
 from prawcore.exceptions import NotFound
 from .log import log
 from .settings import settings
-from .util import DateJSONEncoder, DateJSONDecoder, name_of
+from .util import DateJSONEncoder, DateJSONDecoder
 from .reddit import reddit
 
 from typing import TYPE_CHECKING
@@ -67,10 +67,10 @@ class DataStore:
         raws = self.__raws.get(regi.kind, {})
 
         if not regi.name in dicts:
-            log.debug(f"Creating StorageDict for {regi.kind} {name_of(regi)}.")
+            log.debug(f"Creating StorageDict for {regi}.")
             dicts[regi.name] = StorageDict(store=self, encoder=regi.json_encoder, decoder=regi.json_decoder)
             if regi.name in raws:
-                log.debug(f"Loading existing data into the StorageDict for {regi.kind} {name_of(regi)}.")
+                log.debug(f"Loading existing data into the StorageDict for {regi}.")
                 dicts[regi.name].from_json(raws[regi.name])
         return dicts[regi.name]
 

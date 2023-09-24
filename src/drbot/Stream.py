@@ -2,7 +2,6 @@ from __future__ import annotations
 from abc import abstractmethod
 from typing import Generic, TypeVar
 from .log import log
-from .util import name_of
 from .Regi import Regi
 
 from typing import TYPE_CHECKING
@@ -21,11 +20,10 @@ class ObserverBundle(Generic[T]):
         self.handler = handler
         self.start_run = start_run
 
-    @property
-    def name(self):
-        """A helper that gets a human-readable name for the observer (including the Botling name and the function names)."""
-        def get_name(func: Callable[[Any], Any]): return getattr(func, "__name__", getattr(func, "__qualname__", repr(func)))  # Handle lambdas and such
-        return f'"{self.observer.name}" (handler: {get_name(self.handler)}' + (f", start_run: {get_name(self.start_run)}" if self.start_run else "") + ")"
+    def __str__(self) -> str:
+        """A human-readable name for the observer (including the Botling name and the function names)."""
+        def get_name(func: Callable[..., Any]): return getattr(func, "__name__", getattr(func, "__qualname__", repr(func)))  # Handle lambdas and such
+        return f'Observer "{self.observer.name}" (handler: {get_name(self.handler)}' + (f", start_run: {get_name(self.start_run)}" if self.start_run else "") + ")"
 
 
 class Stream(Regi, Generic[T]):
@@ -54,7 +52,7 @@ class Stream(Regi, Generic[T]):
         if not "last_processed" in self.DR.storage:
             latest = self.get_latest_item()
             self.DR.storage["last_processed"] = None if latest is None else self.id(latest)
-            log.debug(f"Initialized last_processed for {self.kind} {name_of(self)} - {self.DR.storage['last_processed']}")
+            log.debug(f"Initialized last_processed for {self} - {self.DR.storage['last_processed']}")
 
         if setup:
             self.setup()
@@ -64,12 +62,12 @@ class Stream(Regi, Generic[T]):
         Optionally, you can also pass a start_run function that is run when we get a new batch of items (most useful for invalidating caches).
         Returns an ObserverBundle which you can keep if you want to unsubscribe later, or None if subscribing failed."""
         if not self.is_alive:
-            log.debug(f"{observer.kind} {name_of(observer)} tried to subscribe to Stream {name_of(self)}, but the stream is dead.")
+            log.debug(f"{observer} tried to subscribe to {self}, but the Stream is dead.")
             observer.dependency_died(self)
             return
         bundle = ObserverBundle(observer, handler, start_run)
         self.__observers.append(bundle)
-        log.debug(f"Observer {bundle.name} subscribed to Stream {name_of(self)}.")
+        log.debug(f"{bundle} subscribed to Stream {self}.")
         return bundle
 
     def unsubscribe(self, bundle: ObserverBundle[T]) -> bool:
@@ -77,10 +75,10 @@ class Stream(Regi, Generic[T]):
         Returns True if deregistration was successful."""
         if bundle in self.__observers:
             self.__observers.remove(bundle)
-            log.debug(f"Observer {bundle.name} unsubscribed from Stream {name_of(self)}.")
+            log.debug(f"{bundle} unsubscribed from {self}.")
             return True
         else:
-            log.debug(f"Couldn't unsubscribe observer {bundle.name} from Stream {name_of(self)} because it's not subscribed.")
+            log.debug(f"Couldn't unsubscribe {bundle} from {self} because it's not subscribed.")
             return False
 
     def run(self) -> None:
@@ -90,47 +88,47 @@ class Stream(Regi, Generic[T]):
         try:
             self.DR
         except ValueError:
-            raise RuntimeError(f"Stream {name_of(self)} was run before it was registered.") from None
+            raise RuntimeError(f"{self} was run before it was registered.") from None
 
         items = [item for item in self.get_items() if not self.skip_item(item)]
         if len(items) == 0:
             return
-        log.info(f"Stream {name_of(self)} processing {len(items)} new items.")
+        log.info(f"{self} processing {len(items)} new items.")
 
         # Let all the handlers know we're starting a new run
         for i in reversed(range(len(self.__observers))):  # Reversed iteration since we may remove some items
             bundle = self.__observers[i]
             if not bundle.observer.is_alive:
-                log.debug(f"Unsubscribing observer {bundle.name} from Stream {name_of(self)} since it is dead.")
+                log.debug(f"Unsubscribing {bundle} from {self} since it is dead.")
                 del self.__observers[i]
             if bundle.start_run:
-                log.debug(f"Stream {name_of(self)} notifying observer {bundle.name} about the start of a new run.")
+                log.debug(f"{self} notifying {bundle} about the start of a new run.")
                 try:
                     bundle.start_run()
                 except Exception:
-                    log.exception(f"Observer {bundle.name} of Stream {name_of(self)} crashed during start_run.")
+                    log.exception(f"{bundle} of {self} crashed during start_run.")
                     bundle.observer.die()
                     del self.__observers[i]
 
         # Process items
         for item in items:
-            log.debug(f"Stream {name_of(self)} handling item {self.id(item)}")
+            log.debug(f"{self} handling item {self.id(item)}")
             for i in reversed(range(len(self.__observers))):  # Reversed iteration since we may remove some items
                 bundle = self.__observers[i]
                 if not bundle.observer.is_alive:
-                    log.debug(f"Unsubscribing observer {bundle.name} from Stream {name_of(self)} since it is dead.")
+                    log.debug(f"Unsubscribing {bundle} from {self} since it is dead.")
                     del self.__observers[i]
                 try:
                     bundle.handler(item)
                 except Exception:
-                    log.exception(f"Observer {bundle.name} of Stream {name_of(self)} crashed during handler.")
+                    log.exception(f"{bundle} of {self} crashed during handler.")
                     bundle.observer.die()
                     del self.__observers[i]
-            self.storage["last_processed"] = self.id(item)
+            self.DR.storage["last_processed"] = self.id(item)
 
         # Save our storage right now to make sure we don't reprocess any items,
         # even if bad things happen before the next scheduled save.
-        self.storage.force_save()
+        self.DR.storage.force_save()
 
     @abstractmethod
     def get_items(self) -> Iterable[T]:

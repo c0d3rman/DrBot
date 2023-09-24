@@ -5,7 +5,6 @@ from drbot.streams import PostStream
 import schedule
 import time
 from .log import log
-from .util import name_of
 from .storage import DataStore
 from .settings import SettingsManager, settings
 from .Botling import Botling
@@ -44,7 +43,7 @@ class Streams:
 
     def remove(self, stream: Stream[Any]) -> None:
         if stream.name in self.custom:
-            log.debug(f"Removing Stream {name_of(stream)}.")
+            log.debug(f"Removing {stream}.")
             del self.custom[stream.name]
 
     def register_standard(self) -> None:
@@ -90,7 +89,7 @@ class DrBot:
         """Register a registerable object (i.e. Botling or Stream) with DrBot.
         Returns the object back for convenience, or None if registration failed."""
 
-        log.debug(f"Registering {regi.kind} {name_of(regi)}.")
+        log.debug(f"Registering {regi}.")
 
         # Get the relevant collection we're registering to
         if isinstance(regi, Botling):
@@ -102,7 +101,7 @@ class DrBot:
 
         # Check for dupes
         if regi in l:
-            log.warning(f"Ignored attempt to register the already-registered {regi.kind} {name_of(regi)}.")
+            log.warning(f"Ignored attempt to register the already-registered {regi}.")
             return regi
 
         # Actually register
@@ -113,7 +112,7 @@ class DrBot:
             regi.accept_registration(DrBotRep(self, regi, storage, settings))
             return regi
         except Exception:
-            log.exception(f"{regi.kind} {name_of(regi)} crashed during registration.")
+            log.exception(f"{regi} crashed during registration.")
             regi.die()
             if regi in l:
                 l.remove(regi)
@@ -139,7 +138,7 @@ class DrBot:
                     try:
                         stream.run()
                     except Exception:
-                        log.exception(f"Stream {name_of(stream)} crashed during polling.")
+                        log.exception(f"{stream} crashed during polling.")
                         stream.die()
         schedule.every(10).seconds.do(poll_streams)  # TBD generalize polling intervals (vary by stream?)
 
