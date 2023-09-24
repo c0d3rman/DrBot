@@ -169,3 +169,8 @@ class DrBotRep:
     def streams(self):
         """Accessor for streams. For example, you could do self.DR.streams.modmail or self.DR.streams.custom["MyStream"]."""
         return self._drbot.streams
+
+    @property
+    def global_settings(self):
+        """The global settings used across all of DrBot. You might want to access some of these, e.g. dry_run."""
+        return settings
