@@ -33,7 +33,7 @@ class SubStream(Stream[T]):
 
     def get_latest_item(self) -> T | None:
         # This may be an irrelevant item, but just as with Stream it's OK,
-        # since irrelevant items are still returned by get_item and can be used to know where to start -
+        # since irrelevant items are still returned by get_items and can be used to know where to start -
         # they're only skipped by skip_item during actual processing.
         return self.__parent.get_latest_item()
 

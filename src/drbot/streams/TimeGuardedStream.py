@@ -24,16 +24,24 @@ class TimeGuardedStream(Stream[T]):
 
     def get_items(self) -> Iterable[T]:
         items: list[T] = []
+        last_processed_time: datetime | None = None
         for item in self.get_items_raw():
-            if self.DR.storage["last_processed"] and self.id(item) == self.DR.storage["last_processed"]:
+            # Stop early if we see the last processed ID - this check is repeated in Stream.run() but we want to quit early here if we can to save time
+            if self.id(item) == self.DR.storage["last_processed"]:
                 break
-            # Safety check to make sure we don't go back in time somehow, which happened once.
             d = self.timestamp(item)
-            if self.DR.storage["last_processed"] and d < self.DR.storage["last_processed_time"]:
+            # If we're before our last processed time, stop regardless of whether we've seen the last_processed id (which is the whole point of TimeGuardedStream)
+            if d < self.DR.storage["last_processed_time"]:
                 break
-            self.DR.storage["last_processed_time"] = d
+            # We get items from latest to earliest, so only the first item's last_processed_time should be kept
+            if not last_processed_time:
+                last_processed_time = d
             items.append(item)
-        return reversed(items)  # Process from earliest to latest
+        # If we processed at least one thing, update the last processed time
+        if last_processed_time:
+            self.DR.storage["last_processed_time"] = last_processed_time
+        # Return items to be processed from earliest to latest
+        return reversed(items)
 
     @abstractmethod
     def get_items_raw(self) -> Iterable[T]:
