@@ -36,9 +36,9 @@ class Stream(Regi, Generic[T]):
     @property
     def is_active(self) -> bool:
         """Whether this Stream wants to poll.
-        Streams turn themselves off when they have no observers.
+        Streams turn themselves off when they have no active observers (i.e. an active Stream or a living Botling).
         Not the same as is_alive - death is permanent, inactivity is not."""
-        return len(self.__observers) > 0
+        return sum(getattr(b.observer, "is_active", b.observer.is_alive) for b in self.__observers) > 0
 
     def die(self) -> None:
         super().die()
