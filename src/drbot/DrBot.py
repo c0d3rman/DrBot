@@ -14,9 +14,10 @@ from .streams import ModmailStream, PostStream, ModlogStream, CommentStream
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import Iterator, TypeVar
+    from typing import Iterator
     from .Regi import Regi
-    SubRegi = TypeVar('SubRegi', bound=Regi)
+    from .storage import StorageDict
+    from .settings import DotDict
 
 
 class Streams:
@@ -85,31 +86,31 @@ class DrBot:
 
         log.debug("DrBot initialized.")
 
-    def register(self, regi: SubRegi) -> SubRegi | None:
+    def register(self, regi: Regi) -> Regi | None:
         """Register a registerable object (i.e. Botling or Stream) with DrBot.
         Returns the object back for convenience, or None if registration failed."""
-        l = []  # In case we error before setting it
+
+        log.debug(f"Registering {regi.kind} {name_of(regi)}.")
+
+        # Get the relevant collection we're registering to
+        if isinstance(regi, Botling):
+            l = self.botlings
+        elif isinstance(regi, Stream):
+            l = self.streams
+        else:
+            raise ValueError(f"Can't register object of unknown type: {type(regi)}")
+
+        # Check for dupes
+        if regi in l:
+            log.warning(f"Ignored attempt to register the already-registered {regi.kind} {name_of(regi)}.")
+            return regi
+
+        # Actually register
         try:
-            log.debug(f"Registering {regi.kind} {name_of(regi)}.")
-            # Get the relevant collection we're registering to
-            if isinstance(regi, Botling):
-                l = self.botlings
-            elif isinstance(regi, Stream):
-                l = self.streams
-            else:
-                raise ValueError(f"Can't register object of unknown type: {type(regi)}")
-
-            # Check for dupes
-            if regi in l:
-                log.warning(f"Ignored attempt to register the already-registered {regi.kind} {name_of(regi)}.")
-                return regi
-
-            # Actually register
-            SettingsManager().process_settings(regi)
             l.append(regi)
-            if isinstance(regi, Botling):  # Must happen separately from the above check because we don't want to mutate before the dupe check
-                regi.DR = DrBotRep(self, regi)
-            regi.accept_registration(self.storage[regi])
+            settings = SettingsManager().process_settings(regi)
+            storage = self.storage[regi]
+            regi.accept_registration(DrBotRep(self, regi, storage, settings))
             return regi
         except Exception:
             log.exception(f"{regi.kind} {name_of(regi)} crashed during registration.")
@@ -155,17 +156,16 @@ class DrBot:
 
 
 class DrBotRep:
-    """A representative of DrBot, passed to a Botling so it can have keyed access to a restricted subset of DrBot functions.
-    This is not a security feature - it's only intended to prevent Botlings from accidentally messing something up."""
+    """A representative of DrBot, passed to a Regi so it can have keyed access to a restricted subset of DrBot functions.
+    This is not a security feature! It's only intended to prevent Regis from accidentally messing something up."""
 
-    def __init__(self, drbot: DrBot, botling: Botling) -> None:
-        self.__drbot = drbot
-        self.__botling = botling
-
-        # import copy
-        # self.settings = copy.deepcopy(botling.default_settings) # TBD
+    def __init__(self, drbot: DrBot, regi: Regi, storage: StorageDict, settings: DotDict) -> None:
+        self._drbot = drbot
+        self._regi = regi
+        self.storage = storage
+        self.settings = settings
 
     @property
-    def stream(self):
-        """Accessor for streams. For example, you could do self.DR.stream.modmail or self.DR.stream.custom["my_stream"]."""
-        return self.__drbot.streams
+    def streams(self):
+        """Accessor for streams. For example, you could do self.DR.streams.modmail or self.DR.streams.custom["MyStream"]."""
+        return self._drbot.streams

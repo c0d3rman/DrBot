@@ -65,8 +65,8 @@ class SettingsManager(Singleton):
             return
         super().__init__()
         os.makedirs(self.SETTINGS_DIR, exist_ok=True)
-        self.settings = copy.deepcopy(self.default_settings)
-        self.process_settings(self)
+        self.settings = self.process_settings(self)
+        self.validate_settings()
 
     def separate_settings(self, settings: dict[str, Any], _path: list[str] = []) -> tuple[dict[str, Any], dict[str, Any]]:
         """Divide a nested settings dict into regular settings and secret settings (subtrees that start with _).
@@ -144,10 +144,11 @@ class SettingsManager(Singleton):
                 output[k] = settings.get(k, v)
         return output
 
-    def process_settings(self, target: Regi | SettingsManager) -> None:
+    def process_settings(self, target: Regi | SettingsManager) -> DotDict:
         """
         Handle settings loading for a botling or the SettingsManager manager itself.
         Read settings from disk or initialize them using the defaults if they are not present.
+        Returns the loaded settings.
         """
         # Get the target directory
         settings_dir = self.SETTINGS_DIR
@@ -172,7 +173,7 @@ class SettingsManager(Singleton):
         self.verify_settings(secrets, secret=True)
 
         # Merge the settings and provide them to the target
-        target.settings = DotDict(self.merge_settings(settings, secrets))
+        settings_dict = DotDict(self.merge_settings(settings, secrets))
 
         # Write the settings back to disk (saving newly-initialized defaults and removing discarded keys)
         # We skip writing empty files
@@ -183,8 +184,8 @@ class SettingsManager(Singleton):
         if secrets:
             self.write_file(secrets_path, secrets)
 
-        # Validate the settings
-        target.validate_settings()
+        # Return the resulting DotDict back to the caller
+        return settings_dict
 
     def validate_settings(self) -> None:
         """

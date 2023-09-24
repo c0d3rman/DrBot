@@ -18,21 +18,21 @@ class TimeGuardedStream(Stream[T]):
     Instead, we keep track of a timestamp for each item and sweep the list ourselves."""
 
     def setup(self) -> None:
-        if not "last_processed_time" in self.storage:
+        if not "last_processed_time" in self.DR.storage:
             latest = self.get_latest_item()
-            self.storage["last_processed_time"] = self.timestamp(latest) if latest else None
-            log.debug(f"Initialized last_processed_time for {self.kind} {name_of(self)} - {self.storage['last_processed_time']}")
+            self.DR.storage["last_processed_time"] = self.timestamp(latest) if latest else None
+            log.debug(f"Initialized last_processed_time for {self.kind} {name_of(self)} - {self.DR.storage['last_processed_time']}")
 
     def get_items(self) -> Iterable[T]:
         items: list[T] = []
         for item in self.get_items_raw():
-            if self.storage["last_processed"] and self.id(item) == self.storage["last_processed"]:
+            if self.DR.storage["last_processed"] and self.id(item) == self.DR.storage["last_processed"]:
                 break
             # Safety check to make sure we don't go back in time somehow, which happened once.
             d = self.timestamp(item)
-            if self.storage["last_processed"] and d < self.storage["last_processed_time"]:
+            if self.DR.storage["last_processed"] and d < self.DR.storage["last_processed_time"]:
                 break
-            self.storage["last_processed_time"] = d
+            self.DR.storage["last_processed_time"] = d
             items.append(item)
         return reversed(items)  # Process from earliest to latest
 

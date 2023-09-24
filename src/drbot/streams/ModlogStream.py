@@ -8,7 +8,7 @@ class ModlogStream(Stream[ModAction]):
     """A stream of modlog entries."""
 
     def get_items(self) -> list[ModAction]:
-        items = reddit.sub.mod.log(limit=None, params={"before": self.storage["last_processed"]})  # Yes really, it's 'before' not 'after' - reddit convention has the top of the list being the 'first'
+        items = reddit.sub.mod.log(limit=None, params={"before": self.DR.storage["last_processed"]})  # Yes really, it's 'before' not 'after' - reddit convention has the top of the list being the 'first'
         return list(reversed(list(items)))  # Process from earliest to latest
 
     def id(self, item: ModAction) -> str:

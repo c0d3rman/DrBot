@@ -3,7 +3,6 @@ import re
 from praw.models import ModmailConversation
 from ..log import log
 from ..settings import settings
-from ..reddit import reddit
 from ..Botling import Botling
 
 
@@ -11,7 +10,7 @@ class ModmailLinker(Botling):
     """Scans modmails for removal messages and adds mobile-compatible links."""
 
     def setup(self) -> None:
-        self.DR.stream.modmail.subscribe(self, self.handle)
+        self.DR.streams.modmail.subscribe(self, self.handle)
 
     def handle(self, item: ModmailConversation) -> None:
         if not item.is_auto:

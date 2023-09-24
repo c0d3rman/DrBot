@@ -1,13 +1,12 @@
 from __future__ import annotations
 from typing import Any
 from abc import ABC
-import copy
 from .log import log
 from .util import name_of
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .storage import StorageDict
+    from .DrBot import DrBotRep
 
 
 class Regi(ABC):
@@ -38,16 +37,26 @@ class Regi(ABC):
         self.__is_alive = True
         self.__is_registered = False
         self.json_encoder = self.json_decoder = None
-        self.settings = copy.deepcopy(self.default_settings)
+        self.__DrBotRep = None
+
         log.debug(f"{self.__kind} {name_of(self)} intialized.")
 
-    def accept_registration(self, storage: StorageDict, setup: bool = True) -> None:
+    @property
+    def DR(self) -> DrBotRep:
+        """An accessor for all of the tools DrBot provides for your Botling.
+        Only accessible once you've registered your Botling with DrBot."""
+        if not self.__DrBotRep:
+            raise ValueError("This Botling has not been registered yet. If you're trying to use self.DR in __init__, override the setup() method instead.")
+        return self.__DrBotRep
+
+    def accept_registration(self, DR: DrBotRep, setup: bool = True) -> None:
         """This should only ever be called by DrBot.register(). Do not call it yourself.
         The setup flag is used to allow overriding this method without messing up the order of operations. setup() must be called in the override."""
         if self.__is_registered:
             raise ValueError(f"{self.__kind} {name_of(self)} cannot be registered multiple times.")
         self.__is_registered = True
-        self.storage = storage
+        self.__DrBotRep = DR
+        self.validate_settings()
         log.debug(f"{self.__kind} {name_of(self)} registered.")
         if setup:
             self.setup()

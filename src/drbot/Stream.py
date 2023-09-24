@@ -8,7 +8,7 @@ from .Regi import Regi
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Callable, Iterable, Any
-    from .storage import StorageDict
+    from .DrBot import DrBotRep
 
 T = TypeVar("T")
 
@@ -47,14 +47,14 @@ class Stream(Regi, Generic[T]):
         for bundle in self.__observers:
             bundle.observer.dependency_died(self)
 
-    def accept_registration(self, storage: StorageDict, setup: bool = True) -> None:
-        super().accept_registration(storage, setup=False)
+    def accept_registration(self, DR: DrBotRep, setup: bool = True) -> None:
+        super().accept_registration(DR, setup=False)
 
         # Initialize last_processed
-        if not "last_processed" in self.storage:
+        if not "last_processed" in self.DR.storage:
             latest = self.get_latest_item()
-            self.storage["last_processed"] = None if latest is None else self.id(latest)
-            log.debug(f"Initialized last_processed for {self.kind} {name_of(self)} - {self.storage['last_processed']}")
+            self.DR.storage["last_processed"] = None if latest is None else self.id(latest)
+            log.debug(f"Initialized last_processed for {self.kind} {name_of(self)} - {self.DR.storage['last_processed']}")
 
         if setup:
             self.setup()
@@ -87,8 +87,10 @@ class Stream(Regi, Generic[T]):
         """Poll the stream. Looks for new items and notifies observers.
         Handles killing and unsubscribing any observers that error."""
 
-        if not self.storage:
-            raise RuntimeError(f"Stream {name_of(self)} was run before it was registered.")
+        try:
+            self.DR
+        except ValueError:
+            raise RuntimeError(f"Stream {name_of(self)} was run before it was registered.") from None
 
         items = [item for item in self.get_items() if not self.skip_item(item)]
         if len(items) == 0:
@@ -133,7 +135,7 @@ class Stream(Regi, Generic[T]):
     @abstractmethod
     def get_items(self) -> Iterable[T]:
         """Get all new items for the agent to process. E.g. all new modlog entries.
-        You can use self.storage["last_processed"] for this purpose. Make sure to handle the None case (e.g. when your sub is brand new and has no posts/modmails/whatever)."""
+        You can use self.DR.storage["last_processed"] for this purpose. Make sure to handle the None case (e.g. when your sub is brand new and has no posts/modmails/whatever)."""
         pass
 
     @abstractmethod
