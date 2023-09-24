@@ -100,21 +100,20 @@ class DataStore:
             log.info(f"Creating necessary wiki pages.")
 
             if settings.dry_run:
-                log.info("DRY RUN: would have created wiki pages.")
-                return
+                log.info(f"DRY RUN: would have created wiki pages {self.WIKI_PAGE} and {self.DATA_PAGE}.")
+            else:
+                raise NotImplementedError()
+                reddit.sub.wiki.create(
+                    name=self.WIKI_PAGE,
+                    content="This page and its children house the data for [DrBot](https://github.com/c0d3rman/DRBOT). Do not edit.",
+                    reason="Automated page for DrBot")
+                reddit.sub.wiki[self.WIKI_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
 
-            raise NotImplementedError()
-            reddit.sub.wiki.create(
-                name=self.WIKI_PAGE,
-                content="This page and its children house the data for [DrBot](https://github.com/c0d3rman/DRBOT). Do not edit.",
-                reason="Automated page for DrBot")
-            reddit.sub.wiki[self.WIKI_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
-
-            reddit.sub.wiki.create(
-                name=self.DATA_PAGE,
-                content="",
-                reason="Automated page for DrBot")
-            reddit.sub.wiki[self.DATA_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
+                reddit.sub.wiki.create(
+                    name=self.DATA_PAGE,
+                    content="",
+                    reason="Automated page for DrBot")
+                reddit.sub.wiki[self.DATA_PAGE].mod.update(listed=True, permlevel=2)  # Make it mod-only
 
         dump = f"// This page houses [DrBot](https://github.com/c0d3rman/DRBOT)'s records. **DO NOT EDIT!**\n\n{self.to_json()}"
 
@@ -133,23 +132,21 @@ class DataStore:
             data = reddit.sub.wiki[self.DATA_PAGE].content_md
         except NotFound:
             log.error(f"Somehow, tried to fetch wiki page {self.DATA_PAGE} without it existing. This shouldn't happen.")
+            return  # If we can't read the page, we shouldn't try to write to it.
+        if data == dump:
+            log.debug("Not saving to wiki because it's already identical to what we would have saved.")
             return
-        else:
-            if data == dump:
-                log.debug("Not saving to wiki because it's already identical to what we would have saved.")
-                return
 
         log.info("Saving data to wiki.")
 
         if settings.dry_run:
-            log.info("DRY RUN: would have saved some data to the wiki.")
-            log.debug(f"Data that would be saved:\n\n{dump}")
-            return
-
-        raise NotImplementedError()
-        reddit.sub.wiki[self.DATA_PAGE].edit(
-            content=dump,
-            reason="Automated page for DrBot")
+            log.info("DRY RUN: would have saved some data to the wiki. (See the debug log for the data.)")
+            log.debug(dump)
+        else:
+            raise NotImplementedError()
+            reddit.sub.wiki[self.DATA_PAGE].edit(
+                content=dump,
+                reason="Automated page for DrBot")
 
     def _load(self) -> None:
         """This is an internal method and should not be called.

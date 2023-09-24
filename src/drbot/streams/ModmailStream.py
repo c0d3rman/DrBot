@@ -27,6 +27,6 @@ class ModmailStream(TimeGuardedStream[ModmailConversation]):
 
     # def skip_item(self, item: ModmailConversation) -> bool:
     #     # Make sure DrBot's not already in the thread.
-    #     me = reddit().user.me().name
+    #     me = reddit.user.me().name
     #     return any(me == author.name for author in item.authors)
     # TBD: do we want this? Do we maybe want to skip only ones started by DrBot?

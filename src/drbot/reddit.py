@@ -37,36 +37,14 @@ class InfiniteRetryStrategy(prawcore.sessions.RetryStrategy):
         return True
 
 
-class DryRunSession(prawcore.sessions.Session):
-    def request(self, method, path, data=None, files=None, json=None, params=None, timeout=...):
-        print(path, data)
-        return ""
-
-
 class DrReddit(praw.Reddit, Singleton):
     """A singleton that handles all of DrBot's communication with Reddit.
     Everything passes through here so that safeguards, rate limits, and dry run mode function globally."""
-
-    # # TBD: automatic dry run mode
-    # def __getattribute__(self, name):
-    #     attr = object.__getattribute__(self, name)
-    #     if hasattr(attr, '__call__'):
-    #         def newfunc(*args, **kwargs):
-    #             # print('before calling %s' % (attr.__name__ if hasattr(attr, "__name__") else "UNKNOWN"))
-    #             print('before calling %s' % name)
-    #             result = attr(*args, **kwargs)
-    #             print('done calling %s' % name)
-    #             # print('done calling %s' % (attr.__name__ if hasattr(attr, "__name__") else "UNKNOWN"))
-    #             return result
-    #         return newfunc
-    #     else:
-    #         return attr
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         if self._initialized:
             return
         super().__init__(*args, **kwargs)
-        # self._core = DryRunSession(self._core._authorizer)
         self._core._retry_strategy_class = InfiniteRetryStrategy
         self.DR = self._DrRedditHelper(self)
 
@@ -126,15 +104,15 @@ class DrReddit(praw.Reddit, Singleton):
                 log.warning(f'Modlog "{subject}" over maximum length, truncating.')
                 trailer = "... [truncated]"
                 body = body[:10000 - len(trailer)] + trailer
-            
+
             log.info(f'Sending modmail {"as mod discussion " if recipient is None else f"to u/{recipient} "}with subject "{subject}"')
 
             if settings.dry_run:
-                log.debug(f"""DRY RUN: would have sent the following modmail:
+                log.info(f"""DRY RUN: would have sent the following modmail:
 Recipient: {"mod discussion" if recipient is None else f"u/{recipient}"}
 Subject: "{subject}"
 {body}""")
-                
+
                 # Create a fake modmail to return so as to not break callers that need one in dry run mode
                 def fake_modmail(): return None
                 fake_modmail.id = f"fakeid_{uuid4().hex}"
@@ -182,7 +160,7 @@ try:
     assert not reddit.user.me() is None
 except (prawcore.exceptions.ResponseException, AssertionError) as e:
     log.critical("Failed to log in to reddit. Are your login details correct?")
-    raise RuntimeError("Failed to log in to reddit. Are your login details correct?")
+    raise RuntimeError("Failed to log in to reddit. Are your login details correct?") from None
 
 log.info(f"Logged in to reddit as u/{reddit.user.me().name}")
 

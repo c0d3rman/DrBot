@@ -33,7 +33,7 @@ class ModmailLinker(Botling):
         log.info(f"Posting mobile link for modmail {item.id}.")
         body = f"Beep boop, I'm a robot. Here's a mobile-compatible [link](https://reddit.com{result.group(2)}) for your removed {result.group(1)}."
         if self.DR.global_settings.dry_run:
-            log.info(f"""DRY RUN: would have sent the following reply to modmail {item.id}:
+            log.info(f"""DRY RUN: would have sent the following reply to modmail {item.id} and archived it:
 {body}""")
         else:
             raise NotImplementedError()
