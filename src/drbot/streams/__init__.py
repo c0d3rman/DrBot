@@ -5,4 +5,4 @@ from .PostStream import PostStream
 from .CommentStream import CommentStream
 from .ModlogStream import ModlogStream
 
-__all__ = ["Stream", "SubStream", "ModmailStream", "PostStream", "CommentStream", "ModlogStream"]
+__all__ = ("Stream", "SubStream", "ModmailStream", "PostStream", "CommentStream", "ModlogStream")

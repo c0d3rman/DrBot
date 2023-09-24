@@ -5,6 +5,7 @@ import logging
 from uuid import uuid4
 import praw
 import prawcore
+from drbot import __version__
 from .settings import settings
 from .log import log, ModmailLoggingHandler, TemplateLoggingFormatter, BASE_FORMAT
 from .util import Singleton
@@ -142,14 +143,14 @@ if settings.reddit_auth._refresh_token != "":
     reddit = DrReddit(client_id=settings.reddit_auth.drbot_client_id,
                       client_secret=None,
                       refresh_token=settings.reddit_auth._refresh_token,
-                      user_agent="DrBot")
+                      user_agent=f"DrBot v{__version__}")
 elif settings.reddit_auth.manual._username != "":
     log.debug(f"Logging in to reddit using username + password + client_secret... (client id '{settings.reddit_auth.drbot_client_id}')")
     reddit = DrReddit(client_id=settings.reddit_auth.drbot_client_id,
                       client_secret=settings.reddit_auth.manual._client_secret,
                       username=settings.reddit_auth.manual._username,
                       password=settings.reddit_auth.manual._password,
-                      user_agent=f"DrBot")
+                      user_agent=f"DrBot v{__version__}")
 else:
     e = RuntimeError("You need to set a login method in settings/secrets.toml!")
     log.critical(e)
