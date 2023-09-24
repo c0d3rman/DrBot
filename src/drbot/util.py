@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Any
 import json
 import datetime
+import re
 
 
 class DateJSONEncoder(json.JSONEncoder):
@@ -43,3 +44,12 @@ class Singleton:
 
     def __init__(self, *args: Any, **kwargs: Any):
         self._initialized = True
+
+
+def escape_markdown(text: str | None):
+    """Helper to escape markdown, since apparently no one but python-telegram-bot has standardized one of these and I'm not making that a dependency."""
+
+    if text is None:
+        return None
+    escape_chars = r"\_*[]()~`>#+-=|{}.!"
+    return re.sub(f"([{re.escape(escape_chars)}])", r"\\\1", text)
