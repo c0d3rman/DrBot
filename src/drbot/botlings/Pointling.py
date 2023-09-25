@@ -1,9 +1,9 @@
 from __future__ import annotations
 import re
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from dateutil.relativedelta import relativedelta
-from praw.models import ModAction, ModNote, Submission, Comment
+from praw.models import ModAction, ModNote, Submission, Comment, ModmailConversation
 from ..util import escape_markdown, get_dupes
 from ..log import log
 from ..reddit import reddit
@@ -23,9 +23,9 @@ class Removal:
         whatever the date of the most recent modnote associated with it is.
         Errors if called on a removal that hasn't been populated yet."""
         options = []
-        if self.removal_note is not None:
+        if self.removal_note:
             options.append(self.removal_note.created_at)
-        if self.removal_reason is not None:
+        if self.removal_reason:
             options.append(self.removal_reason.created_at)
         assert len(options) != 0
         return max(options)
@@ -34,7 +34,7 @@ class Removal:
     def target_id(self) -> str:
         """Get the ID of the removed item.
         Errors if called on a removal that hasn't been populated yet."""
-        if self.removal_reason is not None:
+        if self.removal_reason:
             return self.removal_reason.reddit_id
         return self.removal_note.reddit_id
 
@@ -69,8 +69,8 @@ class ViolationInterval:
             else:
                 raise Exception(f"Unexpected object type for fullname {fullname}")
             text = re.sub(r"\s*\n\s*", " ", text)  # Strip newlines
-            if pointling.DR.settings.modmail_truncate_len > 0 and len(text) > pointling.DR.settings.modmail_truncate_len:
-                text = text[:pointling.DR.settings.modmail_truncate_len - 3] + "..."
+            if pointling.DR.settings.misc.modmail_truncate_len > 0 and len(text) > pointling.DR.settings.misc.modmail_truncate_len:
+                text = text[:pointling.DR.settings.misc.modmail_truncate_len - 3] + "..."
             date = datetime.fromtimestamp(target.banned_at_utc, timezone.utc).strftime("%m/%d/%y")
             message += f"- {date} {kind}"
             if include_points:
@@ -91,7 +91,7 @@ class PointMap:
 
         log.debug("Loading removal reasons.")
 
-        raw_map = pointling.DR.settings.point_map
+        raw_map = pointling.DR.settings.points.map
 
         # Check for dupes
         if len(raw_map) != len(set(entry["id"] for entry in raw_map)):
@@ -123,7 +123,7 @@ class PointMap:
         """Get the expiration months for a removal reason (or the default if no special duration is specified)."""
 
         # Use default if this removal reason is unknown
-        default_expiration = self.pointling.DR.settings.expiration_months
+        default_expiration = self.pointling.DR.settings.points.expiration_months
         if removal_reason not in self.point_map:
             log.debug(f"Unknown removal reason '{removal_reason}', using default expiration ({default_expiration}).")
             expiration = default_expiration
@@ -136,51 +136,60 @@ class PointMap:
 
 class Pointling(Botling):
     default_settings = {
-        # When a user has this many points, Pointling will take action.
-        "point_threshold": 12,
+        "points": {
+            # When a user has this many points, Pointling will take action.
+            "threshold": 12,
 
-        # How many points does each removal cost?
-        # For example:
-        #   point_map = [
-        #       {id="Some removal reason title", points=3, expires=2},
-        #       {id="Another one", points=0}
-        #   ]
-        # The ID of a removal reason must be its exact title.
-        # You can optionally set a different expiration time (in months) for each removal reason;
-        # If you don't it will use the default from expiration_months.
-        "point_map": [],
+            # How many points does each removal cost?
+            # For example:
+            #   point_map = [
+            #       {id="Some removal reason title", points=3, expires=2},
+            #       {id="Another one", points=0}
+            #   ]
+            # The ID of a removal reason must be its exact title.
+            # You can optionally set a different expiration time (in months) for each removal reason;
+            # If you don't it will use the default from expiration_months.
+            "map": [],
 
-        # What should Pointling do when a user passes the point threshold?
-        # 1: notify the mods
-        # 2: autoban and notify the mods
-        # 3: autoban silently
-        "autoban_mode": 1,
+            # Number of months before a removal is forgiven and wiped from the record.
+            # Set to 0 to never expire. You can override this for individual reasons in the point_map.
+            "expiration_months": 6,
 
-        # Number of months before a removal is forgiven and wiped from the record.
-        # Set to 0 to never expire. You can override this for individual reasons in the point_map.
-        "expiration_months": 6,
+            # You can make exceptions for individual removals and give them custom point values
+            # by putting the point number inside square brackets anywhere in the mod note of the removal, like this:
+            #   [0]
+            # This lets you make special exceptions to not count a removal as a strike against a user or give extra points for a removal.
+            # This requires extra requests though, which slows down the bot, so you can turn it off here.
+            "allow_custom": True,
+        },
+        "action": {
+            # Should Pointling notify the mods when a user passes the point threshold?
+            "notify_mods": True,
 
-        # Truncate long comments/post previews to this length in the modmails we send.
-        "modmail_truncate_len": 100,
+            # Should Pointling automatically ban a user when they pass the point threshold?
+            # WARNING: If you have this on but notify_mods off, this will result in silent bans!
+            "autoban": False,
 
-        # By default, Pointling will not ban mods or track their points.
-        # You can force it to include mods by setting this to false.
-        # This may cause permissions issues with your sub - mods can't always ban other mods.
-        "exclude_mods": True,
+            # When a user is banned (whether manually or automatically),
+            # Pointling can reply to the ban with a summary of their violations.
+            "user_violations_notice": False,
+        },
+        "misc": {
+            # By default, Pointling will not ban mods or track their points.
+            # You can force it to include mods by setting this to false.
+            # This may cause permissions issues with your sub - mods can't always ban other mods.
+            "exclude_mods": True,
 
-        # You can make exceptions for individual removals and give them custom point values
-        # by putting the point number inside square brackets anywhere in the mod note of the removal, like this:
-        #   [0]
-        # This lets you make special exceptions to not count a removal as a strike against a user or give extra points for a removal.
-        # This requires extra requests though, which slows down the bot, so you can turn it off here.
-        "allow_custom_points": True,
+            # Truncate long comments/post previews to this length in the modmails we send.
+            "modmail_truncate_len": 100,
+        },
     }
 
     def setup(self) -> None:
         self.point_map = PointMap(self)
 
         # Init data store
-        if not "outstanding_alerts" in self.DR.storage:
+        if "outstanding_alerts" not in self.DR.storage:
             self.DR.storage["outstanding_alerts"] = {}
 
         # Init caches
@@ -190,17 +199,20 @@ class Pointling(Botling):
         self.cache_items: dict[str, Submission | Comment] = {}
 
         # Subscribe to relevant streams
-        self.DR.streams.modlog.subscribe(self, self.handle, self.start_run)
+        if self.DR.settings.action.autoban or self.DR.settings.action.notify_mods:
+            self.DR.streams.modlog.subscribe(self, self.handle_modlog, self.start_run_modlog)
+        if self.DR.settings.action.user_violations_notice:
+            self.DR.streams.modmail.subscribe(self, self.handle_modmail)
 
-    def handle(self, item: ModAction) -> None:
+    def handle_modlog(self, item: ModAction) -> None:
         # If a relevant action like a removal or approval happens, scan the involved user
         if item.action in ['removecomment', 'removelink', 'addremovalreason', 'approvelink', 'approvecomment']:
             self.scan(item.target_author, cache=True)
         # If a user is banned, we want to purge them from the outstanding alerts and sunset their point alert.
         if item.action == 'banuser':
-            if not item.target_author in self.DR.storage["outstanding_alerts"]:
+            if item.target_author not in self.DR.storage["outstanding_alerts"]:
                 return
-            if not self.valid_user(item.target_author) is None:
+            if self.valid_user(item.target_author) is not None:
                 self.clear_user(item.target_author)
                 return
 
@@ -229,7 +241,7 @@ class Pointling(Botling):
             # Purge data.
             del self.DR.storage["outstanding_alerts"][item.target_author]
 
-    def start_run(self) -> None:
+    def start_run_modlog(self) -> None:
         # Invalidate all our caches
         self.cache_violations.clear()
         self.cache_points.clear()
@@ -255,7 +267,7 @@ class Pointling(Botling):
             return "deleted user"
         if not reddit.DR.user_exists(username):
             return "account doesn't exist anymore"
-        if self.DR.settings.exclude_mods and reddit.DR.is_mod(username):
+        if self.DR.settings.misc.exclude_mods and reddit.DR.is_mod(username):
             return "user is a mod"
         return None
 
@@ -278,11 +290,11 @@ class Pointling(Botling):
         # We iterate in reverse order so we can use a later reapproval to cancel an earlier removal.
         for note in reversed(list(reddit.sub.mod.notes.redditors(username))):
             if note.action in ['removecomment', 'removelink']:
-                if not note.reddit_id in removals:
+                if note.reddit_id not in removals:
                     removals[note.reddit_id] = Removal()
                 removals[note.reddit_id].removal_note = note
             elif note.action == 'addremovalreason':
-                if not note.reddit_id in removals:
+                if note.reddit_id not in removals:
                     removals[note.reddit_id] = Removal()
                 removals[note.reddit_id].removal_reason = note
             elif note.action in ['approvelink', 'approvecomment'] and note.reddit_id in removals:
@@ -300,9 +312,9 @@ class Pointling(Botling):
                 # We check for the operator this way because sometimes AutoModerator does the initial removal and then a human mod adds a removal reason.
                 # If a human touched any part of the process we don't remove it.
                 # This assumes there's at least one of removal or removal_reason, which should always be true.
-                if not removals[id].removal_note is None and removals[id].removal_note.operator != "AutoModerator":
+                if removals[id].removal_note and removals[id].removal_note.operator != "AutoModerator":
                     continue
-                if not removals[id].removal_reason is None and removals[id].removal_reason.operator != "AutoModerator":
+                if removals[id].removal_reason and removals[id].removal_reason.operator != "AutoModerator":
                     continue
                 del removals[id]
 
@@ -352,18 +364,18 @@ class Pointling(Botling):
 
         # Check if this removal has already expired
         expiration_duration = self.point_map.get_expiration(reason)
-        if not expiration_duration is None and datetime.now(timezone.utc) >= datetime.fromtimestamp(removal.date, timezone.utc) + relativedelta(months=expiration_duration):
+        if expiration_duration is not None and datetime.now(timezone.utc) >= datetime.fromtimestamp(removal.date, timezone.utc) + relativedelta(months=expiration_duration):
             return 0
 
         # Get base point cost
         point_cost = self.point_map[reason]
 
         # Check for manual point exception in mod note
-        if self.DR.settings.allow_custom_points:
+        if self.DR.settings.points.allow_custom:
             note = self.get_thing(removal.target_id, cache=cache).mod_note
-            if not note is None:
+            if note:
                 result = re.search(r"\[(\d+)\]", note)
-                if not result is None:
+                if result:
                     point_cost = int(result.group(1))
                     log.debug(f"{removal.target_id} has a custom point cost of {point_cost} as set by its mod note.")
 
@@ -393,7 +405,7 @@ class Pointling(Botling):
 
         # Make sure the user is valid, and clear their data if they're not
         reason = self.valid_user(username)
-        if not reason is None:
+        if reason:
             log.debug(f"Skipping u/{username} and clearing record: {reason}.")
             self.clear_user(username)
             return
@@ -405,8 +417,8 @@ class Pointling(Botling):
         log.debug(f"u/{username} has {total} points.")
 
         # Check total against threshold and act if necessary
-        if total >= self.DR.settings.point_threshold:
-            log.info(f"u/{username} has {total} points, which is over the threshold ({self.DR.settings.point_threshold}).")
+        if total >= self.DR.settings.points.threshold:
+            log.info(f"u/{username} has {total} points, which is over the threshold ({self.DR.settings.points.threshold}).")
             self.act_on(username, cache=cache)
 
     def act_on(self, username: str, cache: bool = False) -> None:
@@ -421,16 +433,17 @@ class Pointling(Botling):
 
         # Handle autoban
         didBan = False
-        if self.DR.settings.autoban_mode in [2, 3]:
+        if self.DR.settings.action.autoban:
             log.info(f"Banning u/{username} for {'TBD - duration'} for passing the point threshold.")
 
             if self.DR.global_settings.dry_run:
                 log.info(f"DRY RUN: would have banned u/{username} for {'TBD - duration'}.")
             else:
                 raise NotImplementedError()  # TBD
+            didBan = True
 
         # Handle modmail notification
-        if self.DR.settings.autoban_mode in [1, 2]:
+        if self.DR.settings.action.notify_mods:
             # Get the most recent ban ID (or "" if there was none) for tracking purposes
             violations = self.get_violations(username, cache=cache)
             last_ban_id = "" if len(violations) == 1 else violations[-2].ban.id
@@ -444,7 +457,7 @@ class Pointling(Botling):
 
             # Prepare modmail message
             interval = violations[-1]
-            message = f"u/{username}'s violations have reached {self.get_user_total(username, cache=cache)} points and passed the {self.DR.settings.point_threshold}-point threshold:\n\n"
+            message = f"u/{username}'s violations have reached {self.get_user_total(username, cache=cache)} points and passed the {self.DR.settings.points.threshold}-point threshold:\n\n"
             message += interval.to_string(self, cache=cache, relevant_only=True)
             message += f"\n{'A' if didBan else 'No'} ban has been issued."
             if not didBan:
@@ -455,3 +468,64 @@ class Pointling(Botling):
 
             # Record the fact that we sent this alert, so we don't send another one for the next removal
             self.DR.storage["outstanding_alerts"][username] = {"ban": last_ban_id, "modmail": modmail.id}
+
+    def handle_modmail(self, item: ModmailConversation) -> None:
+        """Notify users of the violations that led to their ban."""
+        if not self.DR.settings.action.user_violations_notice:
+            return
+        if not item.is_auto:
+            return
+        if item.is_internal:
+            return
+        if not item.is_repliable:
+            return
+        if not re.match(fr"^u/[^ ]+ is (?:temporarily|permanently) banned from r/{self.DR.global_settings.subreddit}$", item.subject, re.IGNORECASE):
+            return
+
+        # Make sure the user is valid
+        reason = self.valid_user(item.participant)
+        if reason:
+            log.info(f"Not sending a violations notice to u/{item.participant} on modmail {item.id}: {reason}.")
+            return
+
+        # Make sure we haven't already left a violations notice on this conversation
+        # TBD: Right now it's done by checking if we participated anywhere but the first message of the thread, but ideally we'd want a more targeted way to do this (since other DRBOT modules might also leave messages).
+        if item.num_messages > 1 and any(m.author == reddit.user.me().name for m in item.messages):
+            log.debug(f"Not sending a violations notice to u/{item.participant} on modmail {item.id} since we already sent one.")
+            return
+
+        # Make sure the user isn't muted, since for some reason reddit freaks out if we try to message them
+        if len(reddit.request(method="GET", path="/r/DebateReligion/about/muted",
+                              params={"user": item.participant})['data']['children']) > 0:
+            log.info(f"Couldn't send a violations notice to u/{item.participant} on modmail {item.id} since they are muted and reddit freaks out about that.")
+            return
+
+        # Find the ban message's associated ViolationInterval by matching their timestamps.
+        # Sadly there's no ID or similar that we can use, but unless you're banning a user multiple times a minute it really shouldn't be an issue.
+        ban_date = datetime.fromisoformat(item.messages[0].date)
+        violations = self.get_violations(item.participant)[:-1]  # Don't include violations after the most recent ban
+        interval_distances = [(interval, abs(datetime.fromtimestamp(interval.ban.created_at, timezone.utc) - ban_date)) for interval in violations]
+        closest_interval, time_gap = min(interval_distances, key=lambda p: p[1])
+        epsilon = timedelta(hours=1)  # The maximum time gap before we consider a ban message not associated with a ban anymore
+        if time_gap >= epsilon:  # Technically the ban message should always come after the ban, but who knows what Reddit might do, so we compare the absolute time gap
+            log.warning(f"No matching ban could be found for ban message {item.id} of user u/{item.participant}, so no violations notice could be sent.")
+            return
+        log.debug(f"Found a matching ban {closest_interval.ban.id} within {time_gap} of ban message {item.id}.")
+
+        # Prepare modmail message
+        violation_string = closest_interval.to_string(self, include_points=False, relevant_only=True)
+        if len(violation_string.strip()) == 0:
+            log.info(f"Skipping violations notice for banned user u/{item.participant} because they have no relevant violations on record.")
+            return
+        message = f"Beep boop, I'm a robot. Here's a list of recent violations which contributed to your ban:\n\n"
+        message += violation_string
+
+        log.info(f"Sending banned user u/{item.participant} a summary of their violations for ban notice {item.id}.")
+
+        if self.DR.global_settings.dry_run:
+            log.info(f"""DRY RUN: would have sent the following reply to modmail {item.id}:
+{message}""")
+        else:
+            raise NotImplementedError()
+            item.reply(author_hidden=True, body=message)
+            item.archive()
