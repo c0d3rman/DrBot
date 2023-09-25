@@ -19,7 +19,7 @@ class SelfModerationWatcher(Botling):
         "exempt_flairs": [],  # You can allow self-moderation in posts with specific flairs, e.g. meta posts. Use the flair ID.
         "exempt_authors": ["AutoModerator"],  # This Botling won't care about moderating anything posted/commented by these authors. You can add DrBot's username here.
         "exempt_mods": ["AutoModerator"],  # Mods that are allowed to self-moderate. You can add DrBot's username here.
-        "modmail": False,  # When we find a case of self-moderation, should we send a modmail about it? (Otherwise we just log)
+        "modmail": True,  # When we find a case of self-moderation, should we send a modmail about it? (Otherwise we just log)
     }
 
     def setup(self) -> None:
