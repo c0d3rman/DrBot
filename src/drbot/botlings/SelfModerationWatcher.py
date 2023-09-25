@@ -18,7 +18,8 @@ class SelfModerationWatcher(Botling):
     default_settings = {
         "exempt_flairs": [],  # You can allow self-moderation in posts with specific flairs, e.g. meta posts. Use the flair ID.
         "exempt_authors": ["AutoModerator"],  # This Botling won't care about moderating anything posted/commented by these authors. You can add DrBot's username here.
-        "exempt_mods": ["AutoModerator"]  # Mods that are allowed to self-moderate. You can add DrBot's username here.
+        "exempt_mods": ["AutoModerator"],  # Mods that are allowed to self-moderate. You can add DrBot's username here.
+        "modmail": False,  # When we find a case of self-moderation, should we send a modmail about it? (Otherwise we just log)
     }
 
     def setup(self) -> None:
@@ -55,7 +56,7 @@ class SelfModerationWatcher(Botling):
 
         # Do the actual self-moderation check
         if self.is_self_moderated(item._mod, item.target_fullname):
-            log.warning(f"Self-moderation detected by u/{item._mod} in {item.target_fullname} on {datetime.fromtimestamp(item.created_utc, timezone.utc)}.")
+            log.info(f"Self-moderation detected by u/{item._mod} in {item.target_fullname} on {datetime.fromtimestamp(item.created_utc, timezone.utc)}.")
             if self.DR.settings.modmail:
                 reddit.DR.send_modmail(subject=f"Self-moderation by u/{item._mod}",
                                        body=f"On {datetime.fromtimestamp(item.created_utc, timezone.utc)}, u/{item._mod} {'removed' if item.action.startswith('remove') else 'approved'} [this {'post' if isinstance(moderated_item, Submission) else 'comment'}](https://reddit.com{item.target_permalink}) despite being involved upstream of it.")
@@ -86,3 +87,8 @@ class SelfModerationWatcher(Botling):
 
         self.cache[fullname] = inner_scan()
         return self.cache[fullname]
+
+    def validate_settings(self) -> None:
+        for key in ["exempt_flairs", "exempt_authors", "exempt_mods"]:
+            assert isinstance(self.DR.settings[key], list) and all(isinstance(v, str) for v in self.DR.settings[key]), f"{key} must be a list of strings"
+        assert isinstance(self.DR.settings.modmail, bool), "modmail must be a bool"

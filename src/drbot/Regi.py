@@ -55,7 +55,10 @@ class Regi(ABC):
             raise ValueError(f"{self} cannot be registered multiple times.")
         self.__is_registered = True
         self.__DrBotRep = DR
-        self.validate_settings()
+        try:
+            self.validate_settings()
+        except Exception as e:
+            raise ValueError(f"{self} found invalid settings: {repr(e)}") from None
         log.debug(f"{self} registered.")
         if setup:
             self.setup()

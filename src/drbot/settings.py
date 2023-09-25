@@ -66,7 +66,10 @@ class SettingsManager(Singleton):
         super().__init__()
         os.makedirs(self.SETTINGS_DIR, exist_ok=True)
         self.settings = self.process_settings(self)
-        self.validate_settings()
+        try:
+            self.validate_settings()
+        except Exception as e:
+            raise ValueError(f"DrBot found invalid global settings: {repr(e)}") from None
 
     def separate_settings(self, settings: dict[str, Any], _path: list[str] = []) -> tuple[dict[str, Any], dict[str, Any]]:
         """Divide a nested settings dict into regular settings and secret settings (subtrees that start with _).
