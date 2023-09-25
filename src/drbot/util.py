@@ -67,3 +67,18 @@ def get_dupes(L: list[T]) -> set[T]:
     for item in L:
         seen2.add(item) if item in seen else seen.add(item)
     return seen2
+
+
+def markdown_comment(comment: str) -> str:
+    """Generate a DrBot-style markdown comment.
+    This comment must be on its own line with nothing before or after it.
+    It's recommended to insert a blank line before and after the comment to separate it from any other lines."""
+    comment = comment.replace("\\n", "\\\\n").replace("\n", "\\n")  # Escape newlines
+    return f"[//DrBot]: # (" + comment.replace("\\n", "\\\\n").replace("\n", "\\n") + ")"
+
+
+def get_markdown_comments(md: str) -> list[str]:
+    """Get all DrBot-style markdown comments from a markdown string.
+    Returns an empty list if there are none."""
+    comments = re.findall(r"\[//DrBot\]: # \((.*)\)", md)
+    return [re.sub(r"(?<!\\)\\n", "\n", s.replace("\\\\n", "\\n")) for s in comments]  # Unescape newlines

@@ -1,12 +1,16 @@
 from __future__ import annotations
 import re
 from praw.models import ModmailConversation
+from ..util import markdown_comment, get_markdown_comments
 from ..log import log
+from ..reddit import reddit
 from ..Botling import Botling
 
 
 class ModmailLinker(Botling):
     """Scans modmails for removal messages and adds mobile-compatible links."""
+
+    MARKER_COMMENT = "ModmailLinker"
 
     def setup(self) -> None:
         self.DR.streams.modmail.subscribe(self, self.handle)
@@ -25,17 +29,24 @@ class ModmailLinker(Botling):
             log.debug(f"Skipping modmail {item.id} because it has the wrong subject: {item.subject}")
             return
 
+        # Make sure we haven't already left a violations notice on this conversation
+        for message in item.messages[1:]:
+            if message.author == reddit.user.me().name and ModmailLinker.MARKER_COMMENT in get_markdown_comments(message.body_markdown):
+                log.debug(f"Skipping modmail {item.id} since we've already linked it.")
+                return
+
         result = re.search(r"\nOriginal (post|comment): (/r/.+)$", item.messages[0].body_markdown)
         if result is None:
             log.error(f"Unknown removal message format for modmail {item.id} - this shouldn't happen.")
             return
 
         log.info(f"Posting mobile link for modmail {item.id}.")
-        body = f"Beep boop, I'm a robot. Here's a mobile-compatible [link](https://reddit.com{result.group(2)}) for your removed {result.group(1)}."
+        body = f"""Beep boop, I'm a robot. Here's a mobile-compatible [link](https://reddit.com{result.group(2)}) for your removed {result.group(1)}.
+
+{markdown_comment(ModmailLinker.MARKER_COMMENT)}"""
         if self.DR.global_settings.dry_run:
             log.info(f"""DRY RUN: would have sent the following reply to modmail {item.id} and archived it:
 {body}""")
         else:
-            raise NotImplementedError()
             item.reply(author_hidden=True, body=body)
             item.archive()
