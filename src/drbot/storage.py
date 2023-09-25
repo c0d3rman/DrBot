@@ -61,12 +61,12 @@ class DataStore:
     def __getitem__(self, regi: Regi) -> StorageDict:
         """Get a StorageDict for a given Botling or Stream."""
 
-        if not regi.kind in self.__dicts:
+        if regi.kind not in self.__dicts:
             self.__dicts[regi.kind] = {}
         dicts = self.__dicts[regi.kind]
         raws = self.__raws.get(regi.kind, {})
 
-        if not regi.name in dicts:
+        if regi.name not in dicts:
             log.debug(f"Creating StorageDict for {regi}.")
             dicts[regi.name] = StorageDict(store=self, encoder=regi.json_encoder, decoder=regi.json_decoder)
             if regi.name in raws:
@@ -82,7 +82,7 @@ class DataStore:
 
         out = copy.deepcopy(self.__raws)  # Preserve any unparsed raws
         for k, d in self.__dicts.items():
-            if not k in out:
+            if k not in out:
                 out[k] = {}
             for k2, d2 in d.items():
                 if not d2:  # Omit empty dicts

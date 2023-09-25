@@ -147,12 +147,12 @@ class DrBot:
         log.info("DrBot is online.")
 
         # Run all jobs immediately except those that shouldn't be run initially
-        [job.run() for job in schedule.get_jobs() if not "no_initial" in job.tags]
+        [job.run() for job in schedule.get_jobs() if "no_initial" not in job.tags]
         # The scheduler loop
         while True:
             schedule.run_pending()
             t = schedule.idle_seconds()
-            if not t is None and t > 0:
+            if t is not None and t > 0:
                 time.sleep(t)
 
 

@@ -97,7 +97,7 @@ class DrReddit(praw.Reddit, Singleton):
                 body += "\n\n(This is an automated message by [DrBot](https://github.com/c0d3rman/DRBOT).)"
 
             # Hide username by default in modmails to users
-            if not recipient is None and not 'author_hidden' in kwargs:
+            if recipient is not None and 'author_hidden' not in kwargs:
                 kwargs['author_hidden'] = True
 
             # Truncate if necessary
@@ -158,7 +158,7 @@ else:
 
 # Make sure we're logged in
 try:
-    assert not reddit.user.me() is None
+    assert reddit.user.me() is not None
 except (prawcore.exceptions.ResponseException, AssertionError) as e:
     log.critical("Failed to log in to reddit. Are your login details correct?")
     raise RuntimeError("Failed to log in to reddit. Are your login details correct?") from None

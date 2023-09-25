@@ -105,7 +105,7 @@ class TemplateLoggingFormatter(logging.Formatter):
             template = {k: template for k in logging._levelToName}
         else:
             for k in logging._levelToName:
-                if not k in template:
+                if k not in template:
                     template[k] = ""
         self.template = template
 

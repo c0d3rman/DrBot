@@ -17,7 +17,7 @@ class TimeGuardedStream(Stream[T]):
     Instead, we keep track of a timestamp for each item and sweep the list ourselves."""
 
     def setup(self) -> None:
-        if not "last_processed_time" in self.DR.storage:
+        if "last_processed_time" not in self.DR.storage:
             latest = self.get_latest_item()
             self.DR.storage["last_processed_time"] = self.timestamp(latest) if latest else None
             log.debug(f"Initialized last_processed_time for {self} - {self.DR.storage['last_processed_time']}")
