@@ -102,7 +102,6 @@ class DataStore:
             if settings.dry_run:
                 log.info(f"DRY RUN: would have created wiki pages {self.WIKI_PAGE} and {self.DATA_PAGE}.")
             else:
-                raise NotImplementedError()
                 reddit.sub.wiki.create(
                     name=self.WIKI_PAGE,
                     content="This page and its children house the data for [DrBot](https://github.com/c0d3rman/DRBOT). Do not edit.",
@@ -143,7 +142,6 @@ class DataStore:
             log.info("DRY RUN: would have saved some data to the wiki. (See the debug log for the data.)")
             log.debug(dump)
         else:
-            raise NotImplementedError()
             reddit.sub.wiki[self.DATA_PAGE].edit(
                 content=dump,
                 reason="Automated page for DrBot")
@@ -198,3 +196,5 @@ class DataStore:
         # Or create _meta if required
         else:
             self.__dicts["_meta"] = {"DrBot": StorageDict(self._default_meta, store=self)}
+
+        log.debug(f"Data loaded:\n{self.to_json()}")
