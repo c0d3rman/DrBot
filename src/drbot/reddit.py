@@ -3,6 +3,7 @@ from typing import Any
 import random
 import logging
 from uuid import uuid4
+from requests.status_codes import codes
 import praw
 import prawcore
 from drbot import __version__
@@ -37,6 +38,9 @@ class InfiniteRetryStrategy(prawcore.sessions.RetryStrategy):
     def should_retry_on_failure(self) -> bool:
         return True
 
+# Hack to solve 429s
+del prawcore.Session.STATUS_EXCEPTIONS[codes["too_many_requests"]]
+prawcore.Session.RETRY_STATUSES.add(codes["too_many_requests"])
 
 class DrReddit(praw.Reddit, Singleton):
     """A singleton that handles all of DrBot's communication with Reddit.
@@ -94,7 +98,7 @@ class DrReddit(praw.Reddit, Singleton):
             # Add common elements
             if add_common:
                 subject = "DrBot: " + subject
-                body += "\n\n(This is an automated message by [DrBot](https://github.com/c0d3rman/DRBOT).)"
+                body += "\n\n(This is an automated message by [DrBot](https://github.com/c0d3rman/DrBot).)"
 
             # Hide username by default in modmails to users
             if recipient is not None and 'author_hidden' not in kwargs:
