@@ -31,7 +31,7 @@ class TimeGuardedStream(Stream[T]):
                 break
             d = self.timestamp(item)
             # If we're before our last processed time, stop regardless of whether we've seen the last_processed id (which is the whole point of TimeGuardedStream)
-            if d < self.DR.storage["last_processed_time"]:
+            if self.DR.storage["last_processed_time"] and d < self.DR.storage["last_processed_time"]:
                 break
             # We get items from latest to earliest, so only the first item's last_processed_time should be kept
             if not last_processed_time:
