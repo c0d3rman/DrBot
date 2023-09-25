@@ -29,7 +29,7 @@ class ModmailLinker(Botling):
             log.debug(f"Skipping modmail {item.id} because it has the wrong subject: {item.subject}")
             return
 
-        # Make sure we haven't already left a violations notice on this conversation
+        # Make sure we haven't already linked this conversation
         for message in item.messages[1:]:
             if message.author == reddit.user.me().name and ModmailLinker.MARKER_COMMENT in get_markdown_comments(message.body_markdown):
                 log.debug(f"Skipping modmail {item.id} since we've already linked it.")

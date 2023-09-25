@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone, timedelta
 from dateutil.relativedelta import relativedelta
 from praw.models import ModAction, ModNote, Submission, Comment, ModmailConversation
-from ..util import escape_markdown, get_dupes
+from ..util import escape_markdown, get_dupes, markdown_comment, get_markdown_comments
 from ..log import log
 from ..reddit import reddit
 from ..Botling import Botling
@@ -184,6 +184,8 @@ class Pointling(Botling):
             "modmail_truncate_len": 100,
         },
     }
+
+    VIOLATIONS_NOTICE_MARKER_COMMENT = "Pointling Violations Notice"
 
     def setup(self) -> None:
         self.point_map = PointMap(self)
@@ -489,10 +491,10 @@ class Pointling(Botling):
             return
 
         # Make sure we haven't already left a violations notice on this conversation
-        # TBD: Right now it's done by checking if we participated anywhere but the first message of the thread, but ideally we'd want a more targeted way to do this (since other DRBOT modules might also leave messages).
-        if item.num_messages > 1 and any(m.author == reddit.user.me().name for m in item.messages):
-            log.debug(f"Not sending a violations notice to u/{item.participant} on modmail {item.id} since we already sent one.")
-            return
+        for message in item.messages[1:]:
+            if message.author == reddit.user.me().name and Pointling.VIOLATIONS_NOTICE_MARKER_COMMENT in get_markdown_comments(message.body_markdown):
+                log.debug(f"Not sending a violations notice to u/{item.participant} on modmail {item.id} since we already sent one.")
+                return
 
         # Make sure the user isn't muted, since for some reason reddit freaks out if we try to message them
         if len(reddit.request(method="GET", path="/r/DebateReligion/about/muted",
@@ -519,6 +521,7 @@ class Pointling(Botling):
             return
         message = f"Beep boop, I'm a robot. Here's a list of recent violations which contributed to your ban:\n\n"
         message += violation_string
+        message += f"\n{markdown_comment(Pointling.VIOLATIONS_NOTICE_MARKER_COMMENT)}"
 
         log.info(f"Sending banned user u/{item.participant} a summary of their violations for ban notice {item.id}.")
 
