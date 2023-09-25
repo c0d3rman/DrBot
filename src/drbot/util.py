@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any
+from typing import Any, TypeVar
 import json
 import datetime
 import re
@@ -53,3 +53,17 @@ def escape_markdown(text: str | None):
         return None
     escape_chars = r"\_*[]()~`>#+-=|{}.!"
     return re.sub(f"([{re.escape(escape_chars)}])", r"\\\1", text)
+
+
+T = TypeVar("T")
+
+
+def get_dupes(L: list[T]) -> set[T]:
+    """
+    Given a list, get a set of all elements which appear more than once.
+    """
+    seen: set[T] = set()
+    seen2: set[T] = set()
+    for item in L:
+        seen2.add(item) if item in seen else seen.add(item)
+    return seen2
