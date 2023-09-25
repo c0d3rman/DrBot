@@ -7,11 +7,11 @@ import sys
 from .settings import settings
 
 
-BASE_FORMAT = "[%(asctime)s] [%(filename)s/%(funcName)s:%(lineno)d] | %(botlingname)s (%(botlingclass)s) | %(levelname)s | %(message)s"
+BASE_FORMAT = "[%(asctime)s] [%(filename)s/%(funcName)s:%(lineno)d] | %(reginame)s (%(regiclass)s) | %(levelname)s | %(message)s"
 
 
 class LogFormatter(logging.Formatter):
-    """Logging formatter supporting colorized output and Botling name detection."""
+    """Logging formatter supporting colorized output and Regi name detection."""
 
     COLOR_CODES = {
         logging.CRITICAL: "\033[1;35m",  # bright/bold magenta
@@ -26,7 +26,7 @@ class LogFormatter(logging.Formatter):
     def __init__(self, fmt: str = "[%(asctime)s] [%(threadName)s] %(levelname)-8s | %(message)s", *args: Any, **kwargs: Any):
         super().__init__(fmt=f"%(color_on)s{fmt}%(color_off)s", *args, **kwargs)
 
-    def format(self, record: logging.LogRecord, detect_botling: bool = True, *args: Any, **kwargs: Any):
+    def format(self, record: logging.LogRecord, detect_regi: bool = True, *args: Any, **kwargs: Any):
         # Colors
         if (record.levelno in self.COLOR_CODES):
             record.color_on = self.COLOR_CODES[record.levelno]
@@ -35,17 +35,17 @@ class LogFormatter(logging.Formatter):
             record.color_on = ""
             record.color_off = ""
 
-        record.botlingclass = "N/A"
-        record.botlingname = "-"
+        record.regiclass = "N/A"
+        record.reginame = "-"
 
-        # Botling detection
-        if detect_botling:
-            from .Botling import Botling  # Lazy import to avoid circular dependency
+        # Regi detection
+        if detect_regi:
+            from .Regi import Regi  # Lazy import to avoid circular dependency
             for frame_record in inspect.stack():
                 self_obj = frame_record.frame.f_locals.get('self')
-                if isinstance(self_obj, Botling):
-                    record.botlingclass = self_obj.__class__.__name__
-                    record.botlingname = self_obj.name
+                if isinstance(self_obj, Regi):
+                    record.regiclass = self_obj.__class__.__name__
+                    record.reginame = self_obj.name
                     break
 
         return super().format(record, *args, **kwargs)
