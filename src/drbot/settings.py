@@ -5,6 +5,8 @@ import copy
 import json
 import tomlkit
 from tomlkit.items import Item
+from dynaconf import Validator, LazySettings
+from dynaconf.validator import OrValidator
 from .util import Singleton
 
 from typing import TYPE_CHECKING
@@ -194,8 +196,34 @@ class SettingsManager(Singleton):
         """
         Validates the root settings to make sure the user set them correctly.
         """
-        assert self.settings.subreddit != "", "You must set a subreddit."
-        assert self.settings.reddit_auth._refresh_token != "" or self.settings.reddit_auth.manual._username != "", "You must provide some login method (either a refresh token or manual details)."
+
+        settings = LazySettings()
+        settings.update(self.settings)  # type: ignore
+        settings.validators.register(
+            # Required strings
+            Validator('subreddit', 'reddit_auth.drbot_client_id', 'logging.log_path', 'config.data_folder_path', 'storage.wiki_page', 'storage.wiki_data_subpage',
+                      must_exist=True, is_type_of=str, ne="",
+                      messages={"operations": "You must set '{name}' to a string."}),
+            # Optional strings
+            Validator('logging.praw_log_path', 'storage.local_backup_path',
+                      must_exist=True, is_type_of=str,
+                      messages={"operations": "'{name}' must be a string, not '{value}'."}),
+            # Bools
+            Validator('dry_run', 'logging.modmail_errors',
+                      must_exist=True, is_type_of=bool,
+                      messages={"operations": "'{name}' must be true or false"}),
+            # Log levels
+            Validator('logging.console_log_level', 'logging.file_log_level',
+                      must_exist=True, is_type_of=str, is_in=["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"],
+                      messages={"operations": "{name} ({value}) must be one of the following: CRITICAL, ERROR, WARNING, INFO, DEBUG"}),
+            # Auth
+            OrValidator(
+                Validator('reddit_auth._refresh_token', is_type_of=str, ne=""),
+                Validator('reddit_auth.manual._username', 'reddit_auth.manual._password', 'reddit_auth.manual._client_secret', is_type_of=str, ne=""),
+                messages={"combined": "You must authenticate DrBot with either a refresh token or username + password + client_secret."}
+            ),
+        )  # type: ignore
+        settings.validators.validate()
 
     def read_file(self, filepath: str) -> dict[str, Any]:
         """
