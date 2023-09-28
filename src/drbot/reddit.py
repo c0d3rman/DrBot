@@ -38,9 +38,11 @@ class InfiniteRetryStrategy(prawcore.sessions.RetryStrategy):
     def should_retry_on_failure(self) -> bool:
         return True
 
+
 # Hack to solve 429s
 del prawcore.Session.STATUS_EXCEPTIONS[codes["too_many_requests"]]
 prawcore.Session.RETRY_STATUSES.add(codes["too_many_requests"])
+
 
 class DrReddit(praw.Reddit, Singleton):
     """A singleton that handles all of DrBot's communication with Reddit.
@@ -134,8 +136,10 @@ Subject: "{subject}"
                     modmail.archive()
                 return modmail
 
-        def is_mod(self, username: str | praw.reddit.models.Redditor) -> bool:
+        def is_mod(self, username: str | praw.reddit.models.Redditor | None) -> bool:
             """Check if a user is a mod in your sub."""
+            if username is None:
+                return False
             if isinstance(username, praw.reddit.models.Redditor):
                 username = username.name
             return len(self._reddit.sub.moderator(username)) > 0
