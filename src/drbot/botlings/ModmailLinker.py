@@ -13,7 +13,7 @@ class ModmailLinker(Botling):
     MARKER_COMMENT = "ModmailLinker"
 
     def setup(self) -> None:
-        self.DR.streams.modmail.subscribe(self, self.handle)
+        self.DR.streams.modmail_conversation.subscribe(self, self.handle)
 
     def handle(self, item: ModmailConversation) -> None:
         if not item.is_auto:
