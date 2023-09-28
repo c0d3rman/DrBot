@@ -9,7 +9,7 @@ from .storage import DataStore
 from .settings import SettingsManager, settings
 from .Botling import Botling
 from .Stream import Stream
-from .streams import PostStream, CommentStream, ModlogStream, ModmailConversationStream
+from .streams import PostStream, CommentStream, ModlogStream, ModmailConversationStream, ModmailMessageStream
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -31,6 +31,7 @@ class Streams:
         self.comment = self.__pre_add(CommentStream())
         self.modlog = self.__pre_add(ModlogStream())
         self.modmail_conversation = self.__pre_add(ModmailConversationStream())
+        self.modmail_message = self.__pre_add(ModmailMessageStream())
 
     def __pre_add(self, stream: Stream[Any]) -> Stream[Any]:
         """Add a standard stream, putting it in _standard so it can be registered later."""
