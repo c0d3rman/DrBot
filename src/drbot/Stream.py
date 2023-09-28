@@ -93,10 +93,13 @@ class Stream(Regi, Generic[T]):
         except ValueError:
             raise RuntimeError(f"{self} was run before it was registered.") from None
 
-        items = [item for item in self.get_items() if not self.skip_item(item)]
-        if len(items) == 0:
+        iter_items = iter(self.get_items())
+        item = next(iter_items, None)
+        while item is not None and self.skip_item(item):
+            item = next(iter_items, None)
+        if item is None:
             return
-        log.info(f"{self} processing {len(items)} new items.")
+        log.info(f"{self} processing new items.")
 
         # Let all the handlers know we're starting a new run
         for i in reversed(range(len(self.__observers))):  # Reversed iteration since we may remove some items
@@ -114,7 +117,9 @@ class Stream(Regi, Generic[T]):
                     del self.__observers[i]
 
         # Process items
-        for item in items:
+        count = 0
+        while item is not None:
+            count += 1
             log.debug(f"{self} handling item {self.id(item)}")
             for i in reversed(range(len(self.__observers))):  # Reversed iteration since we may remove some items
                 bundle = self.__observers[i]
@@ -128,6 +133,9 @@ class Stream(Regi, Generic[T]):
                     bundle.observer.die()
                     del self.__observers[i]
             self.DR.storage["last_processed"] = self.id(item)
+            item = next(iter_items, None)
+
+        log.info(f"{self} processed {count} items.")
 
         # Save our storage right now to make sure we don't reprocess any items,
         # even if bad things happen before the next scheduled save.
