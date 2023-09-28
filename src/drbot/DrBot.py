@@ -47,12 +47,6 @@ class Streams:
         self.__streams[stream.name] = stream
         return stream
 
-    # TBD safe? necessary? (user might call it and wreak havoc)
-    def remove(self, stream: Stream[Any]) -> None:
-        if stream.name in self.__streams:
-            log.debug(f"Removing {stream}.")
-            del self.__streams[stream.name]
-
     def __iter__(self) -> Iterator[Stream[Any]]:
         return iter(self.__streams.values())
 
@@ -116,8 +110,6 @@ class DrBot:
         except Exception:
             log.exception(f"{regi} crashed during registration.")
             regi.die()
-            if regi in l:
-                l.remove(regi)
 
     def run(self) -> None:
         """DrBot's main loop. Call this once all Botlings have been registered. Will run forever."""
@@ -136,7 +128,7 @@ class DrBot:
         # Regularly poll all streams
         def poll_streams():
             for stream in self.streams:
-                if stream.is_alive and stream.is_active:
+                if stream.is_active:
                     try:
                         stream.run()
                     except Exception:

@@ -37,8 +37,8 @@ class Stream(Regi, Generic[T]):
     def is_active(self) -> bool:
         """Whether this Stream wants to poll.
         Streams turn themselves off when they have no active observers (i.e. an active Stream or a living Botling).
-        Not the same as is_alive - death is permanent, inactivity is not."""
-        return sum(getattr(b.observer, "is_active", b.observer.is_alive) for b in self.__observers) > 0
+        Not the same as is_alive - death is permanent, inactivity is not. (But dead streams are never active.)"""
+        return self.is_alive and sum(getattr(b.observer, "is_active", b.observer.is_alive) for b in self.__observers) > 0
 
     def die(self) -> None:
         super().die()
@@ -84,6 +84,9 @@ class Stream(Regi, Generic[T]):
     def run(self) -> None:
         """Poll the stream. Looks for new items and notifies observers.
         Handles killing and unsubscribing any observers that error."""
+
+        if not self.is_alive:
+            raise RuntimeError(f"Tried to run() a dead {self}.")
 
         try:
             self.DR
