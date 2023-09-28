@@ -9,6 +9,10 @@ from .TimeGuardedStream import TimeGuardedStream
 class ModmailConversationStream(TimeGuardedStream[ModmailConversation]):
     """A stream of modmail conversations."""
 
+    def __init__(self, name: str | None = None, state: str = "all") -> None:
+        super().__init__(name=name)
+        self.state = state  # Must happen here since get_latest_item is called before setup
+
     def get_items_raw(self) -> Iterable[ModmailConversation]:
         return reddit.sub.modmail.conversations(state=self.state, limit=None)
 
