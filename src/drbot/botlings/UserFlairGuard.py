@@ -3,10 +3,6 @@ from ..log import log
 from ..reddit import reddit
 from ..Botling import Botling
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from typing import Callable, Any
-
 
 class UserFlairGuard(Botling):
     """Allows you to set a restricted phrase that can only be used by certain users in their flair, and resets any illegal flairs.
