@@ -16,8 +16,7 @@ class UserFlairGuard(Botling):
     }
 
     def setup(self) -> None:
-        # TBD schedule scan()
-        self.scan()
+        self.DR.scheduler.every().hour.do(self.scan)
 
     def scan(self) -> None:
         log.info(f'Scanning user flair.')

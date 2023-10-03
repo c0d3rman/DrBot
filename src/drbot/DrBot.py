@@ -1,7 +1,5 @@
 from __future__ import annotations
-from typing import Any
 import logging
-from drbot.streams import PostStream
 import schedule
 import time
 from .log import log
@@ -13,10 +11,13 @@ from .streams import PostStream, CommentStream, ModlogStream, ModmailConversatio
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from typing import Iterator
+    from typing import Iterator, Any
     from .Regi import Regi
     from .storage import StorageDict
     from .settings import DotDict
+
+
+SLEEP_EPSILON = 1  # How long to sleep the scheduler
 
 
 class Streams:
@@ -106,7 +107,8 @@ class DrBot:
             l.append(regi)
             settings = SettingsManager().process_settings(regi)
             storage = self.storage[regi]
-            regi.accept_registration(DrBotRep(self, regi, storage, settings))
+            scheduler = schedule.Scheduler()
+            regi.accept_registration(DrBotRep(self, regi, storage, settings, scheduler))
             return regi
         except Exception:
             log.exception(f"{regi} crashed during registration.")
@@ -126,6 +128,10 @@ class DrBot:
         logging.shutdown()
 
     def _main(self) -> None:
+        """The true main loop, wrapped by `run()` for error handling."""
+
+        log.info("DrBot is online.")
+
         # Regularly poll all streams
         def poll_streams():
             for stream in self.streams:
@@ -134,37 +140,61 @@ class DrBot:
                         stream.run()
                     except Exception:
                         log.exception(f"{stream} crashed during polling.")
-        schedule.every(10).seconds.do(poll_streams)  # TBD generalize polling intervals (vary by stream?)
                         stream.die(do_log=False)
+            self.reschedule_all()  # If Botlings do any scheduling during their Stream handlers, we don't want to miss polling their sub-schedulers
+        poll_job = schedule.every(10).seconds.do(poll_streams)  # TBD generalize polling intervals (vary by stream?)
 
-        log.info("DrBot is online.")
+        # Poll streams immediately
+        # This will also set up sub-scheduler polling
+        poll_job.run()
 
-        # Run all jobs immediately except those that shouldn't be run initially
-        [job.run() for job in schedule.get_jobs() if "no_initial" not in job.tags]
-        # The scheduler loop
+        # Main loop
         while True:
             schedule.run_pending()
             t = schedule.idle_seconds()
             if t is not None and t > 0:
                 time.sleep(t)
 
+    def reschedule_all(self) -> None:
+        """Schedules polling for all sub-schedulers, cancelling any existing polling jobs.
+        This is an internal method and should not be called externally."""
+
+        # Clear existing jobs
+        schedule.clear("sub-scheduler")
+
+        def schedule_next(botling: Botling):
+            """Helper that runs the pending jobs for a botling and then schedules the next time that botling needs to run jobs.
+            Technically this may break if one botling messes with another botling's schedule, but honestly that's on you at that point."""
+            if botling.is_alive:
+                botling.DR.scheduler.run_pending()
+                if botling.is_alive:  # Check again in case we died during the scheduler tasks
+                    t = max(botling.DR.scheduler.idle_seconds or SLEEP_EPSILON, 0)
+                    log.debug(f"Scheduling next check for {botling} in {t} seconds.")
+                    schedule.every(t).seconds.do(schedule_next, botling).tag("sub-scheduler")
+            return schedule.CancelJob  # This is a one-time job
+
+        for botling in self.botlings:
+            if botling.is_alive:
+                schedule_next(botling)
+
 
 class DrBotRep:
     """A representative of DrBot, passed to a Regi so it can have keyed access to a restricted subset of DrBot functions.
     This is not a security feature! It's only intended to prevent Regis from accidentally messing something up."""
 
-    def __init__(self, drbot: DrBot, regi: Regi, storage: StorageDict, settings: DotDict) -> None:
+    def __init__(self, drbot: DrBot, regi: Regi, storage: StorageDict, settings: DotDict, scheduler: schedule.Scheduler) -> None:
         self._drbot = drbot
         self._regi = regi
         self.storage = storage
         self.settings = settings
+        self.scheduler = scheduler
 
     @property
-    def streams(self):
+    def streams(self) -> Streams:
         """Accessor for streams. For example, you could do self.DR.streams.modmail or self.DR.streams.custom["MyStream"]."""
         return self._drbot.streams
 
     @property
-    def global_settings(self):
+    def global_settings(self) -> DotDict:
         """The global settings used across all of DrBot. You might want to access some of these, e.g. dry_run."""
         return settings
