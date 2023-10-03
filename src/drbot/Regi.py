@@ -89,9 +89,11 @@ class Regi(ABC):
         """Has this Regi been registered with DrBot?"""
         return self.__is_registered
 
-    def die(self) -> None:
+    def die(self, do_log: bool = True) -> None:
         """Kill the Regi. Should only be used if it errors."""
         self.__is_alive = False
+        if do_log:
+            log.error(f"{self} has died.")
 
     def dependency_died(self, dependency: Regi) -> None:
         """Called when a dependency of yours dies. By default, you die as well.

@@ -40,8 +40,8 @@ class Stream(Regi, Generic[T]):
         Not the same as is_alive - death is permanent, inactivity is not. (But dead streams are never active.)"""
         return self.is_alive and sum(getattr(b.observer, "is_active", b.observer.is_alive) for b in self.__observers) > 0
 
-    def die(self) -> None:
-        super().die()
+    def die(self, do_log: bool = True) -> None:
+        super().die(do_log=do_log)
         for bundle in self.__observers:
             bundle.observer.dependency_died(self)
 
@@ -113,7 +113,7 @@ class Stream(Regi, Generic[T]):
                     bundle.start_run()
                 except Exception:
                     log.exception(f"{bundle} of {self} crashed during start_run.")
-                    bundle.observer.die()
+                    bundle.observer.die(do_log=False)
                     del self.__observers[i]
 
         # Process items
@@ -130,7 +130,7 @@ class Stream(Regi, Generic[T]):
                     bundle.handler(item)
                 except Exception:
                     log.exception(f"{bundle} of {self} crashed during handler.")
-                    bundle.observer.die()
+                    bundle.observer.die(do_log=False)
                     del self.__observers[i]
             self.DR.storage["last_processed"] = self.id(item)
             item = next(iter_items, None)

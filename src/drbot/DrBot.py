@@ -110,7 +110,7 @@ class DrBot:
             return regi
         except Exception:
             log.exception(f"{regi} crashed during registration.")
-            regi.die()
+            regi.die(do_log=False)
 
     def run(self) -> None:
         """DrBot's main loop. Call this once all Botlings have been registered. Will run forever."""
@@ -134,8 +134,8 @@ class DrBot:
                         stream.run()
                     except Exception:
                         log.exception(f"{stream} crashed during polling.")
-                        stream.die()
         schedule.every(10).seconds.do(poll_streams)  # TBD generalize polling intervals (vary by stream?)
+                        stream.die(do_log=False)
 
         log.info("DrBot is online.")
 
