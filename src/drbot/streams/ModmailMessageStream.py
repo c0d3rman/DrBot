@@ -39,7 +39,7 @@ class ModmailMessageStream(TimeGuardedStream[ModmailMessage]):
         return datetime.fromisoformat(item.date).astimezone(timezone.utc)
 
     def get_latest_item(self) -> ModmailMessage | None:
-        latest_conversation = next(reddit.sub.modmail.conversations(state=self.state, imit=1, sort="recent"), None)
+        latest_conversation = next(reddit.sub.modmail.conversations(state=self.state, limit=1, sort="recent"), None)
         if latest_conversation is None:
             return None
         return latest_conversation.messages[-1]
