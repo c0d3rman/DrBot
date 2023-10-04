@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from .settings import DotDict
 
 
-SLEEP_EPSILON = 1  # How long to sleep the scheduler
+SLEEP_EPSILON = 60  # How long to sleep the scheduler for by default, in seconds
 
 
 class Streams:
