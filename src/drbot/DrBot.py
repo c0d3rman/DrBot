@@ -167,7 +167,12 @@ class DrBot:
             Technically this may break if one botling messes with another botling's schedule, but honestly that's on you at that point."""
             if botling.is_alive:
                 num_jobs = sum(1 for job in botling.DR.scheduler.jobs if job.should_run)
-                botling.DR.scheduler.run_pending()
+                try:
+                    botling.DR.scheduler.run_pending()
+                except Exception:
+                    log.exception(f"{botling} crashed during a scheduled task.")
+                    botling.die(do_log=False)
+                    return schedule.CancelJob
                 if num_jobs > 0:  # If we just ran some jobs, save
                     log.debug(f"Triggering a save because {botling} ran some scheduled actions.")
                     self.storage.save()
