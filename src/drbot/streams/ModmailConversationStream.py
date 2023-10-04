@@ -7,7 +7,8 @@ from .TimeGuardedStream import TimeGuardedStream
 
 
 class ModmailConversationStream(TimeGuardedStream[ModmailConversation]):
-    """A stream of modmail conversations."""
+    """A stream of modmail conversations.
+    Doesn't include archived modmails by default - use state="archived" if you need that."""
 
     def __init__(self, name: str | None = None, state: str = "all") -> None:
         super().__init__(name=name)

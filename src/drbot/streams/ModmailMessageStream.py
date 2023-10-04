@@ -8,7 +8,8 @@ from .TimeGuardedStream import TimeGuardedStream
 
 
 class ModmailMessageStream(TimeGuardedStream[ModmailMessage]):
-    """A stream of modmail messages, sorted from oldest to newest without regard for which conversation they're in."""
+    """A stream of modmail messages, sorted from oldest to newest without regard for which conversation they're in.
+    Doesn't include archived modmails by default - use state="archived" if you need that."""
 
     def __init__(self, name: str | None = None, state: str = "all") -> None:
         super().__init__(name=name)
