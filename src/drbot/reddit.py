@@ -125,7 +125,6 @@ Subject: "{subject}"
                 fake_modmail.id = f"fakeid_{uuid4().hex}"
                 return fake_modmail
             else:
-                raise NotImplementedError()
                 log.debug(f"""Sending modmail:
 Recipient: {"mod discussion" if recipient is None else f"u/{recipient}"}
 Subject: "{subject}"

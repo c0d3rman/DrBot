@@ -557,6 +557,5 @@ class Pointling(Botling):
             log.info(f"""DRY RUN: would have sent the following reply to modmail {item.id}:
 {message}""")
         else:
-            raise NotImplementedError()
             item.reply(author_hidden=True, body=message)
             item.archive()

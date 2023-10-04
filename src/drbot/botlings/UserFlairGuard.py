@@ -37,7 +37,6 @@ class UserFlairGuard(Botling):
             if self.DR.global_settings.dry_run:
                 log.info(f"DRY RUN: would have reset the flair.")
             else:
-                raise NotImplementedError()
                 reddit.sub.flair.delete(flair['user'].name)
 
             if self.DR.settings.modmail_message != "":
