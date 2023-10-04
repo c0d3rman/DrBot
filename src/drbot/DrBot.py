@@ -166,7 +166,11 @@ class DrBot:
             """Helper that runs the pending jobs for a botling and then schedules the next time that botling needs to run jobs.
             Technically this may break if one botling messes with another botling's schedule, but honestly that's on you at that point."""
             if botling.is_alive:
+                num_jobs = sum(1 for job in botling.DR.scheduler.jobs if job.should_run)
                 botling.DR.scheduler.run_pending()
+                if num_jobs > 0:  # If we just ran some jobs, save
+                    log.debug(f"Triggering a save because {botling} ran some scheduled actions.")
+                    self.storage.save()
                 if botling.is_alive:  # Check again in case we died during the scheduler tasks
                     t = max(botling.DR.scheduler.idle_seconds or SLEEP_EPSILON, 0)
                     log.debug(f"Scheduling next check for {botling} in {t} seconds.")

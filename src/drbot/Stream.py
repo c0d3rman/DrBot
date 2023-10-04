@@ -139,6 +139,7 @@ class Stream(Regi, Generic[T]):
 
         # Save our storage right now to make sure we don't reprocess any items,
         # even if bad things happen before the next scheduled save.
+        log.debug(f"Triggering a save because {self} finished processing new items.")
         self.DR.storage.force_save()
 
     @abstractmethod
