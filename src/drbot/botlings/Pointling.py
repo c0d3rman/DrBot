@@ -3,6 +3,8 @@ import re
 import json
 from datetime import datetime, timezone, timedelta
 from dateutil.relativedelta import relativedelta
+import prawcore
+import schedule
 from praw.models import ModAction, ModNote, Submission, Comment, ModmailConversation
 from ..util import escape_markdown, get_dupes, markdown_comment, get_markdown_comments
 from ..log import log
@@ -212,33 +214,22 @@ class Pointling(Botling):
             self.scan(item.target_author, cache=True)
         # If a user is banned, we want to purge them from the outstanding alerts and sunset their point alert.
         if item.action == 'banuser':
+            log.warning(f"Checking ban for u/{item.target_author}")
             if item.target_author not in self.DR.storage["outstanding_alerts"]:
                 return
-            if self.valid_user(item.target_author) is not None:
+            reason = self.valid_user(item.target_author)
+            if reason is not None:
+                log.debug(f"Clearing outstanding alert data for u/{item.target_author} because: {reason}.")
                 self.clear_user(item.target_author)
                 return
 
-            # Fetch the most recent ban.
-            # TBD: this doesn't work half the time.
-            last_ban = next(reddit.sub.mod.notes.redditors(item.target_author, all_notes=False, params={"filter": "BAN"}))
-            if last_ban is None:
-                log.error(f"Modlog reported that u/{item.target_author} was banned, but we could not find the corresponding ban mod note. This could lead to point alerts no longer being sent for this user.")
-                return
-
-            # Make sure we haven't already seen this ban somehow.
-            if self.DR.storage["outstanding_alerts"][item.target_author]["ban"] == last_ban.id:
-                log.info(f"We've already seen ban {last_ban.id} for u/{item.target_author}, which is strange. Taking no action.")
-                return
-
-            # Send a reply to the point alert and archive it.
-            point_alert = reddit.sub.modmail(self.data_store["outstanding_alerts"][item.target_author]["modmail"])
-            message = f"u/{item.target_author} has been banned."
-            if self.DR.global_settings.dry_run:
-                log.info(f"""DRY RUN: would have sent the following reply to modmail {point_alert.id}:
-    {message}""")
-            else:
-                raise NotImplementedError()
-                point_alert.reply(author_hidden=True, body=message)
+            # Schedule a task to reply to the point message (to note that the user has already been banned).
+            # This has to happen after a short delay, otherwise the ban note may not have come in yet.
+            log.warning(f"Scheduled task to reply to point alert {self.DR.storage['outstanding_alerts'][item.target_author]['modmail']} for u/{item.target_author}")
+            self.DR.scheduler.every(5).seconds.do(self.reply_to_alert,
+                                                  username=item.target_author,
+                                                  modmail_id=self.DR.storage["outstanding_alerts"][item.target_author]["modmail"],
+                                                  ban_id=self.DR.storage["outstanding_alerts"][item.target_author]["ban"])
 
             # Purge data.
             del self.DR.storage["outstanding_alerts"][item.target_author]
@@ -249,6 +240,38 @@ class Pointling(Botling):
         self.cache_points.clear()
         self.cache_scans.clear()
         self.cache_items.clear()
+
+    def reply_to_alert(self, username: str, modmail_id: str, ban_id: str):
+        """Internal method used to schedule replying to a point alert once the user in question has been banned.
+        Has to happen on a delay to give reddit time to register the ban mod note."""
+
+        # Fetch the most recent ban.
+        last_ban = next(reddit.sub.mod.notes.redditors(username, all_notes=True, params={"filter": "BAN"}), None)
+        if last_ban is None:
+            log.error(f"Modlog reported that u/{username} was banned, but we could not find the corresponding ban mod note. This could lead to point alerts no longer being sent for this user.")
+            return schedule.CancelJob
+
+        # Make sure we haven't already seen this ban somehow.
+        if ban_id == last_ban.id:
+            log.info(f"We've already seen ban {last_ban.id} for u/{username}, which is strange. Taking no action.")
+            return schedule.CancelJob
+
+        # Send a reply to the point alert and archive it.
+        point_alert = reddit.sub.modmail(modmail_id)
+        try:  # Make sure it exists.
+            point_alert.num_messages
+        except prawcore.exceptions.Forbidden:
+            log.error(f"Recorded point alert {modmail_id} for user u/{username} does not exist. This shouldn't happen, but also shouldn't break anything.")
+            return schedule.CancelJob
+        message = f"u/{username} has been banned."
+        if self.DR.global_settings.dry_run:
+            log.info(f"""DRY RUN: would have sent the following reply to modmail {point_alert.id}:
+{message}""")
+        else:
+            point_alert.reply(author_hidden=True, body=message)
+
+        # This is a one-time job
+        return schedule.CancelJob
 
     def get_thing(self, id: str, cache: bool = False) -> Submission | Comment:
         """Wrapper for the normal get_thing that handles caching."""
@@ -468,8 +491,13 @@ class Pointling(Botling):
             # Send modmail
             modmail = reddit.DR.send_modmail(subject=f"{'Ban' if didBan else 'Point'} alert for u/{username}", body=message)
 
-            # Record the fact that we sent this alert, so we don't send another one for the next removal
-            self.DR.storage["outstanding_alerts"][username] = {"ban": last_ban_id, "modmail": modmail.id}
+            # If this is a point warning that we might need to reply to later,
+            # record the fact that we sent it so we don't send another one for the next removal.
+            if not self.DR.settings.action.autoban:
+                self.DR.storage["outstanding_alerts"][username] = {"ban": last_ban_id, "modmail": modmail.id}
+            # Otherwise clear any previous alerts they may have
+            else:
+                self.clear_user(username)
 
     def handle_modmail(self, item: ModmailConversation) -> None:
         """Notify users of the violations that led to their ban."""
