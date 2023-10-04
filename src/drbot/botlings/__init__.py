@@ -4,5 +4,6 @@ from .AdminWatcher import AdminWatcher
 from .SelfModerationWatcher import SelfModerationWatcher
 from .Pointling import Pointling
 from .UserFlairGuard import UserFlairGuard
+from .SidebarSyncer import SidebarSyncer
 
-__all__ = ("Botling", "ModmailLinker", "AdminWatcher", "SelfModerationWatcher", "Pointling", "UserFlairGuard")
+__all__ = ("Botling", "ModmailLinker", "AdminWatcher", "SelfModerationWatcher", "Pointling", "UserFlairGuard", "SidebarSyncer")
