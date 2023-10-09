@@ -1,8 +1,9 @@
 from __future__ import annotations
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Callable
 import json
 import datetime
 import re
+import schedule
 
 
 class DateJSONEncoder(json.JSONEncoder):
@@ -82,3 +83,11 @@ def get_markdown_comments(md: str) -> list[str]:
     Returns an empty list if there are none."""
     comments = re.findall(r"\[//DrBot\]: # \((.*)\)", md)
     return [re.sub(r"(?<!\\)\\n", "\n", s.replace("\\\\n", "\\n")) for s in comments]  # Unescape newlines
+
+
+def do_once(function: Callable[..., Any]) -> Callable[..., Any]:
+    """Turn a function into a one-time task that you can schedule with the schedule library."""
+    def f(*args: Any, **kwargs: Any) -> type:
+        function(*args, **kwargs)
+        return schedule.CancelJob
+    return f

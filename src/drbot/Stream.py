@@ -91,6 +91,10 @@ class Stream(Regi, Generic[T]):
         else:
             log.debug(f"Couldn't unsubscribe {bundle} from {self} because it's not subscribed.")
             return False
+    
+    @property
+    def observers(self) -> list[Regi]:
+        return list(bundle.observer for bundle in self.__observers)
 
     def run(self) -> None:
         """Poll the stream. Looks for new items and notifies observers.

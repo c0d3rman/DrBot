@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import schedule
 import time
+from .util import do_once
 from .log import log
 from .storage import DataStore
 from .settings import SettingsManager, settings
@@ -15,9 +16,6 @@ if TYPE_CHECKING:
     from .Regi import Regi
     from .storage import StorageDict
     from .settings import DotDict
-
-
-SLEEP_EPSILON = 60  # How long to sleep the scheduler for by default, in seconds
 
 
 class Streams:
@@ -131,10 +129,11 @@ class DrBot:
     def _main(self) -> None:
         """The true main loop, wrapped by `run()` for error handling."""
 
-        log.info("DrBot is online.")
+        log.info(f"DrBot for r/{settings.subreddit} is online.")
 
         # Regularly poll all streams
         def poll_streams():
+            log.debug("Polling all streams.")
             for stream in self.streams:
                 if stream.is_active:
                     try:
@@ -144,11 +143,14 @@ class DrBot:
                             raise RuntimeError(f"{stream} crashed during polling.") from e
                         except:
                             stream.die()
-            self.reschedule_all()  # If Botlings do any scheduling during their Stream handlers, we don't want to miss polling their sub-schedulers
+                    self.reschedule_botlings([observer for observer in stream.observers if isinstance(observer, Botling)])  # If Botlings do any scheduling during their Stream handlers, we don't want to miss polling their sub-schedulers
         poll_job = schedule.every(10).seconds.do(poll_streams)  # TBD generalize polling intervals (vary by stream?)
 
+        # Initialize all sub-schedulers
+        self.reschedule_botlings()
+
         # Poll streams immediately
-        # This will also set up sub-scheduler polling
+        # This will reschedule some sub-schedulers, but this is desired behavior since scheduling may happen in either of setup() or handlers)
         poll_job.run()
 
         # Main loop
@@ -158,36 +160,50 @@ class DrBot:
             if t is not None and t > 0:
                 time.sleep(t)
 
-    def reschedule_all(self) -> None:
-        """Schedules polling for all sub-schedulers, cancelling any existing polling jobs.
+    def reschedule_botlings(self, botlings: list[Botling] | None = None) -> None:
+        """Schedules polling for the given botlings' sub-schedulers, cancelling any existing polling jobs.
+        If no list is given, applies to all botlings.
         This is an internal method and should not be called externally."""
 
         # Clear existing jobs
-        schedule.clear("sub-scheduler")
+        if botlings is None:
+            schedule.clear("sub-scheduler")
+        else:
+            for botling in botlings:
+                schedule.clear(f"sub-scheduler: {botling.name}")
 
-        def schedule_next(botling: Botling):
+        def schedule_next(botling: Botling) -> None:
             """Helper that runs the pending jobs for a botling and then schedules the next time that botling needs to run jobs.
             Technically this may break if one botling messes with another botling's schedule, but honestly that's on you at that point."""
-            if botling.is_alive:
-                num_jobs = sum(1 for job in botling.DR.scheduler.jobs if job.should_run)
+
+            if not botling.is_alive:
+                return
+
+            if any(job.should_run for job in botling.DR.scheduler.jobs):  # Only run (and save) if we actually need to run something
                 try:
                     botling.DR.scheduler.run_pending()
-                except Exception:
-                    log.exception(f"{botling} crashed during a scheduled task.")
-                    botling.die(do_log=False)
-                    return schedule.CancelJob
-                if num_jobs > 0:  # If we just ran some jobs, save
-                    log.debug(f"Triggering a save because {botling} ran some scheduled actions.")
-                    self.storage.save()
-                if botling.is_alive:  # Check again in case we died during the scheduler tasks
-                    t = max(botling.DR.scheduler.idle_seconds or SLEEP_EPSILON, 0)
-                    log.debug(f"Scheduling next check for {botling} in {t} seconds.")
-                    schedule.every(t).seconds.do(schedule_next, botling).tag("sub-scheduler")
-            return schedule.CancelJob  # This is a one-time job
+                except Exception as e:
+                    try:
+                        raise RuntimeError(f"{botling} crashed during a scheduled task.") from e
+                    except:
+                        botling.die()
+                    return
 
-        for botling in self.botlings:
-            if botling.is_alive:
-                schedule_next(botling)
+                log.debug(f"Triggering a save because {botling} ran some scheduled actions.")
+                self.storage.save()
+
+            if not botling.is_alive:  # Check again in case we died during the scheduler tasks
+                return
+
+            if botling.DR.scheduler.idle_seconds is None:  # If no jobs are scheduled, we don't need to periodically check this scheduler again until some other entry point (i.e. streams)
+                return
+
+            t = max(botling.DR.scheduler.idle_seconds, 0)
+            log.debug(f"Scheduling next check for {botling} in {t} seconds.")
+            schedule.every(t).seconds.do(do_once(schedule_next), botling).tag("sub-scheduler", f"sub-scheduler: {botling.name}")
+
+        for botling in (self.botlings if botlings is None else botlings):
+            schedule_next(botling)
 
 
 class DrBotRep:
