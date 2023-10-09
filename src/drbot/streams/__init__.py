@@ -5,5 +5,6 @@ from .CommentStream import CommentStream
 from .ModlogStream import ModlogStream
 from .ModmailConversationStream import ModmailConversationStream
 from .ModmailMessageStream import ModmailMessageStream
+from .EditedStream import EditedStream
 
-__all__ = ("Stream", "SubStream", "PostStream", "CommentStream", "ModlogStream", "ModmailConversationStream", "ModmailMessageStream")
+__all__ = ("Stream", "SubStream", "PostStream", "CommentStream", "ModlogStream", "ModmailConversationStream", "ModmailMessageStream", "EditedStream")
