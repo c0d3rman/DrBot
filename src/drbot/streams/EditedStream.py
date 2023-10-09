@@ -21,5 +21,4 @@ class EditedStream(Stream[Submission | Comment]):
         return item.fullname
 
     def get_latest_item(self) -> Submission | Comment | None:
-        return list(reddit.sub.mod.edited(limit=5))[-1]
-        # return next(reddit.sub.mod.edited(limit=1), None)
+        return next(reddit.sub.mod.edited(limit=1), None)
