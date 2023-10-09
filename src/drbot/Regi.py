@@ -89,16 +89,22 @@ class Regi(ABC):
         """Has this Regi been registered with DrBot?"""
         return self.__is_registered
 
-    def die(self, do_log: bool = True) -> None:
-        """Kill the Regi. Should only be used if it errors."""
+    def die(self, do_log: bool = True) -> list[Regi]:
+        """Kill the Regi. Should only be used if it errors.
+        Returns a list of Regis that died as a result of this call (for logging purposes)."""
+        if not self.is_alive:
+            return []  # If we're already dead, do nothing
+
         self.__is_alive = False
         if do_log:
-            log.error(f"{self} has died.")
+            log.smart_error(f"{self} has died.")
+        return [self]  # At base a Regi has no dependents, so it's just us
 
-    def dependency_died(self, dependency: Regi) -> None:
+    def dependency_died(self, dependency: Regi, do_log: bool = True) -> list[Regi]:
         """Called when a dependency of yours dies. By default, you die as well.
-        You can override this if you want to be resilient to dependencies dying, but you'll have to make sure you use them carefully."""
-        self.die()
+        You can override this if you want to be resilient to dependencies dying, but you'll have to make sure you use them carefully.
+        Returns a list of dependent Regis that died as a result (for logging purposes)."""
+        return self.die(do_log=do_log)
 
     def setup(self) -> None:
         """Called once a Regi is registered and has access to its storage and settings.

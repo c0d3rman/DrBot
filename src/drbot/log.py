@@ -74,6 +74,18 @@ if settings.logging.log_path != "":
     log.addHandler(logfile_handler)
 
 
+def smart_error(*args: Any, **kwargs: Any) -> None:
+    """Automatically use whichever of log.error() or log.exception() is appropriate."""
+
+    if sys.exc_info() == (None, None, None):
+        log.error(*args, **kwargs)
+    else:
+        log.exception(*args, **kwargs)
+
+
+log.smart_error = smart_error
+
+
 # We also log to modmail, which is initialized in reddit.py
 # The classes below are for that
 

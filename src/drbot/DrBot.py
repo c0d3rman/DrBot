@@ -139,9 +139,11 @@ class DrBot:
                 if stream.is_active:
                     try:
                         stream.run()
-                    except Exception:
-                        log.exception(f"{stream} crashed during polling.")
-                        stream.die(do_log=False)
+                    except Exception as e:
+                        try:
+                            raise RuntimeError(f"{stream} crashed during polling.") from e
+                        except:
+                            stream.die()
             self.reschedule_all()  # If Botlings do any scheduling during their Stream handlers, we don't want to miss polling their sub-schedulers
         poll_job = schedule.every(10).seconds.do(poll_streams)  # TBD generalize polling intervals (vary by stream?)
 

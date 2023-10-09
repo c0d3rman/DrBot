@@ -41,9 +41,20 @@ class Stream(Regi, Generic[T]):
         return self.is_alive and sum(getattr(b.observer, "is_active", b.observer.is_alive) for b in self.__observers) > 0
 
     def die(self, do_log: bool = True) -> None:
-        super().die(do_log=do_log)
+        dead_regis = super().die(do_log=False)
+        if not self in dead_regis:
+            return dead_regis  # If we didn't die (since we're already dead), no need to warn our dependents again
+
         for bundle in self.__observers:
-            bundle.observer.dependency_died(self)
+            dead_regis += bundle.observer.dependency_died(self, do_log=False)
+        if do_log:
+            message = f"{self} has died."
+            if len(dead_regis) > 1:  # Since we're always in it
+                message += " This lead to the death of the following dependents:\n\n- "
+                message += "\n- ".join(str(regi) for regi in dead_regis if regi is not self)
+                message += "\n\n"
+            log.smart_error(message)
+        return dead_regis
 
     def accept_registration(self, DR: DrBotRep, setup: bool = True) -> None:
         super().accept_registration(DR, setup=False)
