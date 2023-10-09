@@ -3,13 +3,20 @@ from praw.models import ModAction
 from ..reddit import reddit
 from ..Stream import Stream
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Iterable
+
 
 class ModlogStream(Stream[ModAction]):
-    """A stream of modlog entries."""
+    """A stream of modlog entries.
+    Does not include modlog entries related to DrBot, otherwise we'd end up in infinite loops every time we did something."""
 
-    def get_items(self) -> list[ModAction]:
-        items = reddit.sub.mod.log(limit=None, params={"before": self.DR.storage["last_processed"]})  # Yes really, it's 'before' not 'after' - reddit convention has the top of the list being the 'first'
-        return list(reversed(list(items)))  # Process from earliest to latest
+    def get_items(self) -> Iterable[ModAction]:
+        for item in reddit.sub.mod.stream.log(continue_after_id=self.DR.storage["last_processed"], pause_after=0):
+            if item is None:
+                break
+            yield item
 
     def id(self, item: ModAction) -> str:
         return item.id

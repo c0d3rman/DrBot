@@ -1,10 +1,13 @@
 from __future__ import annotations
-from typing import Iterable
 import heapq
 from datetime import datetime, timezone
 from praw.models import ModmailMessage
 from ..reddit import reddit
 from .TimeGuardedStream import TimeGuardedStream
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import Iterable
 
 
 class ModmailMessageStream(TimeGuardedStream[ModmailMessage]):
