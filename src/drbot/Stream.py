@@ -56,17 +56,14 @@ class Stream(Regi, Generic[T]):
             log.smart_error(message)
         return dead_regis
 
-    def accept_registration(self, DR: DrBotRep, setup: bool = True) -> None:
-        super().accept_registration(DR, setup=False)
+    def accept_registration(self, DR: DrBotRep) -> None:
+        super().accept_registration(DR)
 
         # Initialize last_processed
         if "last_processed" not in self.DR.storage:
             latest = self.get_latest_item()
             self.DR.storage["last_processed"] = None if latest is None else self.id(latest)
             log.debug(f"Initialized last_processed for {self} - {self.DR.storage['last_processed']}")
-
-        if setup:
-            self.setup()
 
     def subscribe(self, observer: Regi, handler: Callable[[T], None], start_run: Callable[[], None] | None = None) -> ObserverBundle[T] | None:
         """Subscribe an observer with the stream.
@@ -78,7 +75,7 @@ class Stream(Regi, Generic[T]):
             return
         bundle = ObserverBundle(observer, handler, start_run)
         self.__observers.append(bundle)
-        log.debug(f"{bundle} subscribed to Stream {self}.")
+        log.debug(f"{bundle} subscribed to {self}.")
         return bundle
 
     def unsubscribe(self, bundle: ObserverBundle[T]) -> bool:
@@ -91,7 +88,7 @@ class Stream(Regi, Generic[T]):
         else:
             log.debug(f"Couldn't unsubscribe {bundle} from {self} because it's not subscribed.")
             return False
-    
+
     @property
     def observers(self) -> list[Regi]:
         return list(bundle.observer for bundle in self.__observers)

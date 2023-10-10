@@ -82,11 +82,11 @@ class DrBot:
 
         log.debug("DrBot initialized.")
 
-    def register(self, regis: Regi | list[Regi]) -> Regi | list[Regi] | None:
+    def register(self, *regis: Regi) -> Regi | tuple[Regi, ...] | None:
         """Register one or more registerable objects (i.e. Botling or Stream) with DrBot.
         Returns the object(s) back for convenience, or None if registration failed."""
 
-        for regi in (regis if isinstance(regis, list) else [regis]):
+        for regi in regis:
             log.debug(f"Registering {regi}.")
 
             # Get the relevant collection we're registering to
@@ -100,7 +100,7 @@ class DrBot:
             # Check for dupes
             if regi in l:
                 log.warning(f"Ignored attempt to register the already-registered {regi}.")
-                return regi
+                continue
 
             # Actually register
             try:
@@ -109,12 +109,14 @@ class DrBot:
                 storage = self.storage[regi]
                 scheduler = schedule.Scheduler()
                 regi.accept_registration(DrBotRep(self, regi, storage, settings, scheduler))
-                return regi
-            except Exception:
-                log.exception(f"{regi} crashed during registration.")
-                regi.die(do_log=False)
+                regi.setup()
+            except Exception as e:
+                try:
+                    raise RuntimeError(f"{regi} crashed during registration.") from e
+                except:
+                    regi.die()
 
-        return regis
+        return regis[0] if len(regis) == 1 else regis
 
     def run(self) -> None:
         """DrBot's main loop. Call this once all Botlings have been registered. Will run forever."""

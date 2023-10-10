@@ -48,9 +48,8 @@ class Regi(ABC):
             raise ValueError("This Botling has not been registered yet. If you're trying to use self.DR in __init__, override the setup() method instead.")
         return self.__DrBotRep
 
-    def accept_registration(self, DR: DrBotRep, setup: bool = True) -> None:
-        """This should only ever be called by DrBot.register(). Do not call it yourself.
-        The setup flag is used to allow overriding this method without messing up the order of operations. setup() must be called in the override."""
+    def accept_registration(self, DR: DrBotRep) -> None:
+        """This should only ever be called by DrBot.register(). Do not call it yourself."""
         if self.__is_registered:
             raise ValueError(f"{self} cannot be registered multiple times.")
         self.__is_registered = True
@@ -60,8 +59,6 @@ class Regi(ABC):
         except Exception as e:
             raise ValueError(f"{self} found invalid settings: {repr(e)}") from None
         log.debug(f"{self} registered.")
-        if setup:
-            self.setup()
 
     @property
     def name(self) -> str:
