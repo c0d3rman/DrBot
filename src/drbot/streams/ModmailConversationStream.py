@@ -13,7 +13,7 @@ class ModmailConversationStream(BeforelessStream[ModmailConversation]):
     Doesn't include archived modmails by default - use state="archived" if you want only those."""
 
     def __init__(self, name: str | None = None, state: str = "all") -> None:
-        super().__init__(name=name)
+        super().__init__(name=name or f"{self.__class__.__name__}[{state}]")
         self.state = state  # Must happen here since get_latest_item is called before setup
 
     def get_raw_stream(self) -> Generator[ModmailConversation, None, None]:
