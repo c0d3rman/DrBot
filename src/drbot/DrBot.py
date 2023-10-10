@@ -82,36 +82,39 @@ class DrBot:
 
         log.debug("DrBot initialized.")
 
-    def register(self, regi: Regi) -> Regi | None:
-        """Register a registerable object (i.e. Botling or Stream) with DrBot.
-        Returns the object back for convenience, or None if registration failed."""
+    def register(self, regis: Regi | list[Regi]) -> Regi | list[Regi] | None:
+        """Register one or more registerable objects (i.e. Botling or Stream) with DrBot.
+        Returns the object(s) back for convenience, or None if registration failed."""
 
-        log.debug(f"Registering {regi}.")
+        for regi in (regis if isinstance(regis, list) else [regis]):
+            log.debug(f"Registering {regi}.")
 
-        # Get the relevant collection we're registering to
-        if isinstance(regi, Botling):
-            l = self.botlings
-        elif isinstance(regi, Stream):
-            l = self.streams
-        else:
-            raise ValueError(f"Can't register object of unknown type: {type(regi)}")
+            # Get the relevant collection we're registering to
+            if isinstance(regi, Botling):
+                l = self.botlings
+            elif isinstance(regi, Stream):
+                l = self.streams
+            else:
+                raise ValueError(f"Can't register object of unknown type: {type(regi)}")
 
-        # Check for dupes
-        if regi in l:
-            log.warning(f"Ignored attempt to register the already-registered {regi}.")
-            return regi
+            # Check for dupes
+            if regi in l:
+                log.warning(f"Ignored attempt to register the already-registered {regi}.")
+                return regi
 
-        # Actually register
-        try:
-            l.append(regi)
-            settings = SettingsManager().process_settings(regi)
-            storage = self.storage[regi]
-            scheduler = schedule.Scheduler()
-            regi.accept_registration(DrBotRep(self, regi, storage, settings, scheduler))
-            return regi
-        except Exception:
-            log.exception(f"{regi} crashed during registration.")
-            regi.die(do_log=False)
+            # Actually register
+            try:
+                l.append(regi)
+                settings = SettingsManager().process_settings(regi)
+                storage = self.storage[regi]
+                scheduler = schedule.Scheduler()
+                regi.accept_registration(DrBotRep(self, regi, storage, settings, scheduler))
+                return regi
+            except Exception:
+                log.exception(f"{regi} crashed during registration.")
+                regi.die(do_log=False)
+
+        return regis
 
     def run(self) -> None:
         """DrBot's main loop. Call this once all Botlings have been registered. Will run forever."""
