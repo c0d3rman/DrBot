@@ -118,7 +118,6 @@ class DrBot:
                 storage = self.storage[regi]
                 scheduler = schedule.Scheduler()
                 regi.accept_registration(DrBotRep(self, regi, storage, settings, scheduler))
-                regi.setup()
             except Exception as e:
                 try:
                     raise RuntimeError(f"{regi} crashed during registration.") from e
@@ -144,6 +143,11 @@ class DrBot:
         """The true main loop, wrapped by `run()` for error handling."""
 
         log.info(f"DrBot for r/{settings.subreddit} is online.")
+
+        # Setup all Regis
+        for l in (self.botlings, self.streams):
+            for regi in l:
+                regi.setup()
 
         # Regularly poll all streams
         def poll_streams():
