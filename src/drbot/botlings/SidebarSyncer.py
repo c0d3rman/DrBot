@@ -35,6 +35,7 @@ class SidebarSyncer(Botling):
         self.DR.scheduler.every(1).days.do(self.sync)  # Schedule a daily sync
 
     def sync(self) -> None:
+        log.debug("Checking for sidebar changes...")
         markdown, css = self.convert_sidebar()
 
         # Get current CSS and markdown
