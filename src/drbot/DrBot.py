@@ -33,14 +33,12 @@ class Streams:
         self.modmail_conversation_normal = self.__pre_add(ModmailConversationStream(state="all"))
         self.modmail_conversation_archived = self.__pre_add(ModmailConversationStream(state="archived"))
         self.modmail_conversation_mod = self.__pre_add(ModmailConversationStream(state="mod"))
-        self.modmail_conversation_appeals = self.__pre_add(ModmailConversationStream(state="appeals"))
-        self.modmail_conversation = self.__pre_add(ModmailConversationUnionStream(self.modmail_conversation_normal, self.modmail_conversation_mod, self.modmail_conversation_appeals, name="ModmailConversationStream"))  # Includes everything but archived, since reddit's "all" doesn't actually include all
+        self.modmail_conversation = self.__pre_add(ModmailConversationUnionStream(self.modmail_conversation_normal, self.modmail_conversation_mod, name="ModmailConversationStream"))  # Reddit's "all" doesn't usually include mod discussions
 
         self.modmail_message_normal = self.__pre_add(ModmailMessageStream(state="all"))
         self.modmail_message_archived = self.__pre_add(ModmailMessageStream(state="archived"))
         self.modmail_message_mod = self.__pre_add(ModmailMessageStream(state="mod"))
-        self.modmail_message_appeals = self.__pre_add(ModmailMessageStream(state="appeals"))
-        self.modmail_message = self.__pre_add(ModmailMessageUnionStream(self.modmail_message_normal, self.modmail_message_mod, self.modmail_message_appeals, name="ModmailMessageStream"))  # Includes everything but archived, since reddit's "all" doesn't actually include all
+        self.modmail_message = self.__pre_add(ModmailMessageUnionStream(self.modmail_message_normal, self.modmail_message_mod, name="ModmailMessageStream"))  # Reddit's "all" doesn't usually include mod discussions
 
     def __pre_add(self, stream: Stream[Any]) -> Stream[Any]:
         """Add a standard stream, putting it in _standard so it can be registered later."""
