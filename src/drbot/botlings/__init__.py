@@ -6,5 +6,6 @@ from .Pointling import Pointling
 from .UserFlairGuard import UserFlairGuard
 from .SidebarSyncer import SidebarSyncer
 from .WeekdayFlairEnforcer import WeekdayFlairEnforcer
+from .ModlogArchiver import ModlogArchiver
 
-__all__ = ("Botling", "ModmailLinker", "AdminWatcher", "SelfModerationWatcher", "Pointling", "UserFlairGuard", "SidebarSyncer", "WeekdayFlairEnforcer")
+__all__ = ("Botling", "ModmailLinker", "AdminWatcher", "SelfModerationWatcher", "Pointling", "UserFlairGuard", "SidebarSyncer", "WeekdayFlairEnforcer", "ModlogArchiver")
