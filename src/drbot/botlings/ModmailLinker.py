@@ -13,7 +13,8 @@ class ModmailLinker(Botling):
     MARKER_COMMENT = "ModmailLinker"
 
     def setup(self) -> None:
-        self.DR.streams.modmail_conversation.subscribe(self, self.handle)
+        self.DR.streams.modmail_conversation_archived.subscribe(self, self.handle)  # Removal messages are archived at creation
+        self.DR.streams.modmail_conversation.subscribe(self, self.handle)  # In case we miss one somehow and it gets unarchived (by being replied to)
 
     def handle(self, item: ModmailConversation) -> None:
         if not item.is_auto:
