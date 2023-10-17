@@ -17,5 +17,6 @@ class ModlogArchiver(Botling):
 
     def handle(self, item: ModAction) -> None:
         data = {attr: getattr(item, attr) for attr in ModlogArchiver.attrs}
+        data["mod"] = item.mod.name  # This is a praw.Redditor object, not a raw data attribute, so we process it separately
         self.file.write(json.dumps(data) + "\n")
         self.file.flush()
