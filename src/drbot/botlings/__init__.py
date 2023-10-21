@@ -7,5 +7,6 @@ from .UserFlairGuard import UserFlairGuard
 from .SidebarSyncer import SidebarSyncer
 from .WeekdayFlairEnforcer import WeekdayFlairEnforcer
 from .ModlogArchiver import ModlogArchiver
+from .QueueSizeWatcher import QueueSizeWatcher
 
-__all__ = ("Botling", "ModmailLinker", "AdminWatcher", "SelfModerationWatcher", "Pointling", "UserFlairGuard", "SidebarSyncer", "WeekdayFlairEnforcer", "ModlogArchiver")
+__all__ = ("Botling", "ModmailLinker", "AdminWatcher", "SelfModerationWatcher", "Pointling", "UserFlairGuard", "SidebarSyncer", "WeekdayFlairEnforcer", "ModlogArchiver", "QueueSizeWatcher")

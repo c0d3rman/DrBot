@@ -4,6 +4,7 @@ import json
 import datetime
 import re
 import schedule
+from pytimeparse import parse
 
 
 class DateJSONEncoder(json.JSONEncoder):
@@ -91,3 +92,14 @@ def do_once(function: Callable[..., Any]) -> Callable[..., Any]:
         function(*args, **kwargs)
         return schedule.CancelJob
     return f
+
+
+def validate_duration(duration: str, key: str = "duration", nonzero: bool = False) -> None:
+    """Make sure a duration like "10 seconds" or "a year" is valid.
+    For use in validate_settings().
+    You should pass in the name of the settings key you are validating so the errors are more informative."""
+    assert isinstance(duration, str), f'{key} must be a string.'
+    parsed_duration = parse(duration)
+    assert parsed_duration is not None, f'Could not parse {key} "{duration}".'
+    if nonzero:
+        assert parsed_duration > 0, f'{key} must be greater than zero.'
