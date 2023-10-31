@@ -206,7 +206,7 @@ class Pointling(Botling):
         if self.DR.settings.action.autoban or self.DR.settings.action.notify_mods:
             self.DR.streams.modlog.subscribe(self, self.handle_modlog, self.start_run_modlog)
         if self.DR.settings.action.user_violations_notice:
-            self.DR.streams.modmail_conversation.subscribe(self, self.handle_modmail)
+            self.DR.streams.modmail_conversation_archived.subscribe(self, self.handle_modmail)
 
     def handle_modlog(self, item: ModAction) -> None:
         # If a relevant action like a removal or approval happens, scan the involved user
