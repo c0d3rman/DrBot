@@ -28,7 +28,7 @@ TBD
 
 ## FAQ
 
-#### I can't read my moldog because of all the DrBot entries!
+#### I can't read my modlog because of all the DrBot entries!
 
 Since DrBot constantly does a bunch of stuff, it tends to pollute the modlog. To view your modlog without DrBot's actions, click the "moderator" filter, choose "select all" in the dropdown, and then unselect DrBot's account. (This is also useful for filtering out AutoModerator.)
 
