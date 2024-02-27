@@ -130,8 +130,12 @@ class DataStore:
         try:
             data = reddit.sub.wiki[self.DATA_PAGE].content_md
         except NotFound:
-            log.error(f"Somehow, tried to fetch wiki page {self.DATA_PAGE} without it existing. This shouldn't happen.")
-            return  # If we can't read the page, we shouldn't try to write to it.
+            if settings.dry_run:
+                log.info("DRY RUN: because dry-run mode is active, no wiki pages were created, so no data was read from the wiki.")
+            else:
+                e = RuntimeError(f"Somehow, tried to fetch wiki page {self.DATA_PAGE} without it existing. This shouldn't happen.")
+                log.critical(e)
+                raise e
         if data == dump:
             log.debug("Not saving to wiki because it's already identical to what we would have saved.")
             return
