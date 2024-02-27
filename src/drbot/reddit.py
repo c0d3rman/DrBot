@@ -93,9 +93,29 @@ class DrReddit(praw.Reddit, Singleton):
             else:
                 raise ValueError(f"Unknown fullname type: {fullname}")
 
+        def is_muted(self, username: str | praw.reddit.models.Redditor | None) -> bool:
+            """Check if a user is muted in your sub."""
+            if username is None:
+                return False
+            if isinstance(username, praw.reddit.models.Redditor):
+                username = username.name
+            return next(self._reddit.sub.muted(username), None) is not None
+
         def send_modmail(self, subject: str, body: str, recipient: praw.reddit.models.Redditor | str | None = None, add_common: bool = True, archive: bool = False, **kwargs: Any) -> praw.reddit.models.ModmailConversation | None:
             """Sends modmail while handling adding common DrBot elements and such.
             Creates a moderator discussion by default if a recipient is not provided."""
+
+            # Make sure the recipient is not muted (which will cause an error if we try to modmail them)
+            if self._reddit.DR.is_muted(recipient):
+                username = recipient
+                if isinstance(recipient, praw.reddit.models.Redditor):
+                    username = username.name
+                if username is None:
+                    username = f"[invalid user]"
+                else:
+                    username = f"u/{username}"
+                log.warning(f'Modlog "{subject}" not sent to {username} because they are muted.')
+                return
 
             # Add common elements
             if add_common:

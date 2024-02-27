@@ -263,6 +263,11 @@ class Pointling(Botling):
         except prawcore.exceptions.Forbidden:
             log.error(f"Recorded point alert {modmail_id} for user u/{username} does not exist. This shouldn't happen, but also shouldn't break anything.")
             return schedule.CancelJob
+        # Make sure the user isn't muted.
+        if reddit.DR.is_muted(username):
+            log.warning(
+                f'Reply not sent to modlog "{point_alert.subject}" because u/{username} is muted.')
+            return schedule.CancelJob
         message = f"u/{username} has been banned."
         if self.DR.global_settings.dry_run:
             log.info(f"""DRY RUN: would have sent the following reply to modmail {point_alert.id}:
@@ -525,9 +530,8 @@ class Pointling(Botling):
                 return
 
         # Make sure the user isn't muted, since for some reason reddit freaks out if we try to message them
-        if len(reddit.request(method="GET", path="/r/DebateReligion/about/muted",
-                              params={"user": item.participant})['data']['children']) > 0:
-            log.info(f"Couldn't send a violations notice to u/{item.participant} on modmail {item.id} since they are muted and reddit freaks out about that.")
+        if reddit.DR.is_muted(item.participant):
+            log.warning(f"Couldn't send a violations notice to u/{item.participant} on modmail {item.id} since they are muted.")
             return
 
         # Find the ban message's associated ViolationInterval by matching their timestamps.
