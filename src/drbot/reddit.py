@@ -1,14 +1,14 @@
 from __future__ import annotations
-from typing import Any
-import random
 import logging
+import random
+from typing import Any
 from uuid import uuid4
-from requests.status_codes import codes
 import praw
 import prawcore
 from drbot import __version__
+from requests.status_codes import codes
+from .log import BASE_FORMAT, ModmailLoggingHandler, TemplateLoggingFormatter, log
 from .settings import settings
-from .log import log, ModmailLoggingHandler, TemplateLoggingFormatter, BASE_FORMAT
 from .util import Singleton
 
 

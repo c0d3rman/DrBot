@@ -1,15 +1,15 @@
 from __future__ import annotations
-import re
 import json
-from datetime import datetime, timezone, timedelta
-from dateutil.relativedelta import relativedelta
+import re
+from datetime import datetime, timedelta, timezone
 import prawcore
 import schedule
-from praw.models import ModAction, ModNote, Submission, Comment, ModmailConversation
-from ..util import escape_markdown, get_dupes, markdown_comment, get_markdown_comments
+from dateutil.relativedelta import relativedelta
+from praw.models import Comment, ModAction, ModmailConversation, ModNote, Submission
+from ..Botling import Botling
 from ..log import log
 from ..reddit import reddit
-from ..Botling import Botling
+from ..util import escape_markdown, get_dupes, get_markdown_comments, markdown_comment
 
 
 class Removal:
@@ -210,10 +210,10 @@ class Pointling(Botling):
 
     def handle_modlog(self, item: ModAction) -> None:
         # If a relevant action like a removal or approval happens, scan the involved user
-        if item.action in ['removecomment', 'removelink', 'addremovalreason', 'approvelink', 'approvecomment']:
+        if item.action in ["removecomment", "removelink", "addremovalreason", "approvelink", "approvecomment"]:
             self.scan(item.target_author, cache=True)
         # If a user is banned, we want to purge them from the outstanding alerts and sunset their point alert.
-        if item.action == 'banuser':
+        if item.action == "banuser":
             log.warning(f"Checking ban for u/{item.target_author}")
             if item.target_author not in self.DR.storage["outstanding_alerts"]:
                 return
@@ -319,17 +319,17 @@ class Pointling(Botling):
 
         # We iterate in reverse order so we can use a later reapproval to cancel an earlier removal.
         for note in reversed(list(reddit.sub.mod.notes.redditors(username))):
-            if note.action in ['removecomment', 'removelink']:
+            if note.action in ["removecomment", "removelink"]:
                 if note.reddit_id not in removals:
                     removals[note.reddit_id] = Removal()
                 removals[note.reddit_id].removal_note = note
-            elif note.action == 'addremovalreason':
+            elif note.action == "addremovalreason":
                 if note.reddit_id not in removals:
                     removals[note.reddit_id] = Removal()
                 removals[note.reddit_id].removal_reason = note
-            elif note.action in ['approvelink', 'approvecomment'] and note.reddit_id in removals:
+            elif note.action in ["approvelink", "approvecomment"] and note.reddit_id in removals:
                 del removals[note.reddit_id]
-            elif note.action == 'banuser':
+            elif note.action == "banuser":
                 bans.append(note)
 
             # TBD: deal with unbanning. How should it affect intervals?
@@ -514,7 +514,7 @@ class Pointling(Botling):
             return
         if not item.is_repliable:
             return
-        if not re.match(fr"^u/[^ ]+ is (?:temporarily|permanently) banned from r/{self.DR.global_settings.subreddit}$", item.subject, re.IGNORECASE):
+        if not re.match(rf"^u/[^ ]+ is (?:temporarily|permanently) banned from r/{self.DR.global_settings.subreddit}$", item.subject, re.IGNORECASE):
             return
 
         # Make sure the user is valid
