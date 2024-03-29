@@ -268,7 +268,8 @@ class Pointling(Botling):
             log.warning(
                 f'Reply not sent to modlog "{point_alert.subject}" because u/{username} is muted.')
             return schedule.CancelJob
-        message = f"u/{username} has been banned."
+        duration = "permanently" if last_ban.details == "permanent" else f"for {last_ban.details}"
+        message = f"u/{username} has been banned {duration}."
         if self.DR.global_settings.dry_run:
             log.info(f"""DRY RUN: would have sent the following reply to modmail {point_alert.id}:
 {message}""")
