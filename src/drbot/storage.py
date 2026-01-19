@@ -132,6 +132,7 @@ class DataStore:
         except NotFound:
             if settings.dry_run:
                 log.info("DRY RUN: because dry-run mode is active, no wiki pages were created, so no data was read from the wiki.")
+                return
             else:
                 e = RuntimeError(f"Somehow, tried to fetch wiki page {self.DATA_PAGE} without it existing. This shouldn't happen.")
                 log.critical(e)

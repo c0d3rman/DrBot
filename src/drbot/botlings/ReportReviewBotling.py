@@ -13,7 +13,6 @@ class ReportReviewBotling(Botling):
     """
     
     default_settings = {
-        "check_interval_minutes": 10,
         "disallow_removal": True,
         "rule_instructions": []
     }
@@ -63,9 +62,6 @@ class ReportReviewBotling(Botling):
         self._processed_in_run = 0
 
     def handle_report(self, item: Submission | Comment) -> None:
-        # TEMP: testing shim - stop after 3 items
-        if self._processed_in_run >= 3:
-            return
         self.process_item(item)
         self._processed_in_run += 1
 
@@ -130,7 +126,7 @@ class ReportReviewBotling(Botling):
         for idx, rule in enumerate(reddit.sub.rules, start=1):
             extra = rule_notes_by_num.get(idx)
             if extra:
-                subreddit_rules.append(f"{idx}. {rule.short_name}\n{rule.description}\nExtra: {extra}")
+                subreddit_rules.append(f"{idx}. {rule.short_name}\n{rule.description}\[EXTRA LLM INSTRUCTIONS]: {extra}")
             else:
                 subreddit_rules.append(f"{idx}. {rule.short_name}\n{rule.description}")
         rules_text = "\n".join(subreddit_rules)
@@ -170,11 +166,6 @@ Context:
 Reports:
 {reports_text}
 """
-
-        log.info(
-            "ReportReviewBotling raw prompt:\n"
-            f"{system_prompt}\n\n---\n\n{user_prompt}"
-        )
 
         log.debug(f"Requesting LLM review for {item.id}...")
         # response = self.DR.llm.generate(prompt) -> Changed signature
@@ -220,9 +211,16 @@ Reports:
 
         log.info(f"LLM reviewed {item.id}. Decision: {decision}. Reasoning: {reasoning[:100]}...")
 
+        if decision in ("REMOVE", "SPAM"):
+            if reason_id is None or reason_id not in self.removal_reasons_by_short_id:
+                log.error(f"LLM returned unknown reason_id '{reason_id}' for {item.id}.")
+                return
+            reason = self.removal_reasons_by_short_id[reason_id]
+        else:
+            reason = None
+
         if self.DR.global_settings.dry_run:
             if decision in ("REMOVE", "SPAM"):
-                reason = self.removal_reasons_by_id[reason_id]
                 log.info(f"DRY RUN: Would execute {decision} on {item.id} with reason '{reason.title}'")
             else:
                 log.info(f"DRY RUN: Would execute {decision} on {item.id}")
@@ -232,7 +230,6 @@ Reports:
             item.mod.approve()
             log.info(f"Approved {item.id}")
         elif decision == "REMOVE":
-            reason = self.removal_reasons_by_short_id[reason_id]
             if self.DR.settings.get("disallow_removal", True):
                 bot_name = reddit.user.me().name
                 item.report(f"REMOVE suggested - {reason.title} ({reason.id.split('-', 1)[0]})")
@@ -241,7 +238,6 @@ Reports:
                 item.mod.remove(reason_id=reason.id)
                 log.info(f"Removed {item.id} with reason '{reason.title}'")
         elif decision == "SPAM":
-            reason = self.removal_reasons_by_short_id[reason_id]
             if self.DR.settings.get("disallow_removal", True):
                 bot_name = reddit.user.me().name
                 item.report(f"DrBot ({bot_name}): SPAM suggested ({reason.title} - {reason.id.split('-', 1)[0]}).")

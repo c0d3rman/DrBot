@@ -11,13 +11,6 @@ if TYPE_CHECKING:
 class ReportsStream(BeforelessStream[Submission | Comment]):
     """A stream of reported comments and submissions."""
 
-    def setup(self) -> None:
-        # TEMP: backfill the most recent items once for testing
-        if "temp_backfill_done" not in self.DR.storage:
-            self.DR.storage["last_processed"] = None
-            self.DR.storage["temp_backfill_done"] = True
-        super().setup()
-
     def get_raw_stream(self) -> Generator[Submission | Comment, None, None]:
         return reddit.sub.mod.stream.reports(pause_after=0)
 
