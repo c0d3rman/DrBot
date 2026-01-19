@@ -198,7 +198,7 @@ class SettingsManager(Singleton):
         """
 
         settings = LazySettings()
-        settings.update(self.settings)  # type: ignore
+        settings.update(self._to_plain_dict(self.settings))  # type: ignore
         settings.validators.register(
             # Required strings
             Validator('subreddit', 'reddit_auth.drbot_client_id', 'logging.log_path', 'config.data_folder_path', 'storage.wiki_page', 'storage.wiki_data_subpage',
@@ -224,6 +224,18 @@ class SettingsManager(Singleton):
             ),
         )  # type: ignore
         settings.validators.validate()
+
+    def _to_plain_dict(self, value: Any) -> Any:
+        """Convert DotDict/tomlkit items into plain Python types for validation."""
+        if isinstance(value, DotDict):
+            value = dict(value)
+        if isinstance(value, dict):
+            return {k: self._to_plain_dict(v) for k, v in value.items()}
+        if isinstance(value, list):
+            return [self._to_plain_dict(v) for v in value]
+        if isinstance(value, Item):
+            return value.unwrap()
+        return value
 
     def read_file(self, filepath: str) -> dict[str, Any]:
         """

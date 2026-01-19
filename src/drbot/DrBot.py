@@ -7,7 +7,8 @@ from .log import log
 from .storage import DataStore
 from .settings import SettingsManager, settings
 from .Botling import Botling
-from .streams import Stream, PostStream, CommentStream, ModlogStream, ModmailConversationStream, ModmailMessageStream, EditedStream, ModmailConversationUnionStream, ModmailMessageUnionStream
+from .llm import LLMService
+from .streams import Stream, PostStream, CommentStream, ModlogStream, ModmailConversationStream, ModmailMessageStream, EditedStream, ReportsStream, ModmailConversationUnionStream, ModmailMessageUnionStream
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -29,6 +30,7 @@ class Streams:
         self.comment = self.__pre_add(CommentStream())
         self.modlog = self.__pre_add(ModlogStream())
         self.edited = self.__pre_add(EditedStream())
+        self.reports = self.__pre_add(ReportsStream())
 
         self.modmail_conversation_normal = self.__pre_add(ModmailConversationStream(state="all"))
         self.modmail_conversation_archived = self.__pre_add(ModmailConversationStream(state="archived"))
@@ -81,11 +83,15 @@ class DrBot:
     def __init__(self) -> None:
         self.storage = DataStore()
         self.botlings: list[Botling] = []
+        self.services: list[Regi] = []
         self.streams = Streams()
+        self.llm = LLMService()
 
         # Initialize standard streams
         for stream in self.streams._standard:
             self.register(stream)
+            
+        self.register(self.llm)
 
         log.debug("DrBot initialized.")
 
@@ -101,6 +107,8 @@ class DrBot:
                 l = self.botlings
             elif isinstance(regi, Stream):
                 l = self.streams
+            elif isinstance(regi, LLMService):
+                l = self.services
             else:
                 raise ValueError(f"Can't register object of unknown type: {type(regi)}")
 
@@ -143,7 +151,7 @@ class DrBot:
         log.info(f"DrBot for r/{settings.subreddit} is online.")
 
         # Setup all Regis
-        for l in (self.botlings, self.streams):
+        for l in (self.services, self.botlings, self.streams):
             for regi in l:
                 regi.setup()
 
@@ -242,3 +250,8 @@ class DrBotRep:
     def global_settings(self) -> DotDict:
         """The global settings used across all of DrBot. You might want to access some of these, e.g. dry_run."""
         return settings
+
+    @property
+    def llm(self) -> LLMService:
+        """Accessor for the LLM service."""
+        return self._drbot.llm

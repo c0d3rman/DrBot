@@ -6,5 +6,6 @@ from .ModlogStream import ModlogStream
 from .ModmailConversationStream import ModmailConversationStream
 from .ModmailMessageStream import ModmailMessageStream
 from .EditedStream import EditedStream
+from .ReportsStream import ReportsStream
 
-__all__ = ("Stream", "SubStream", "UnionStream", "ModmailConversationUnionStream", "ModmailMessageUnionStream", "PostStream", "CommentStream", "ModlogStream", "ModmailConversationStream", "ModmailMessageStream", "EditedStream")
+__all__ = ("Stream", "SubStream", "UnionStream", "ModmailConversationUnionStream", "ModmailMessageUnionStream", "PostStream", "CommentStream", "ModlogStream", "ModmailConversationStream", "ModmailMessageStream", "EditedStream", "ReportsStream")
